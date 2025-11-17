@@ -1,0 +1,10 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "security-header-analyzer"
+version = "1.0.0"
+description = "Analyze HTTP security headers against best practices"
+requires-python = ">=3.8"
+dependencies = ["requests>=2.28.0"]
