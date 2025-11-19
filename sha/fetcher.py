@@ -174,13 +174,16 @@ def fetch_headers(
     }
 
     try:
+        # Create session to configure max_redirects
+        session = requests.Session()
+        session.max_redirects = max_redirects
+
         # Make HEAD request to fetch only headers
-        response = requests.head(
+        response = session.head(
             url,
             headers=headers,
             timeout=timeout,
             allow_redirects=follow_redirects,
-            max_redirects=max_redirects,
         )
 
         # Check for HTTP errors
@@ -289,11 +292,13 @@ def get_final_url(
     validate_url_safety(url)
 
     try:
-        response = requests.head(
+        session = requests.Session()
+        session.max_redirects = max_redirects
+
+        response = session.head(
             url,
             timeout=timeout,
             allow_redirects=True,
-            max_redirects=max_redirects,
         )
         return response.url
 
