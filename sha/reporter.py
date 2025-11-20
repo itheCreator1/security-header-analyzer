@@ -252,7 +252,8 @@ def get_timestamp() -> str:
     Returns:
         Timestamp string (e.g., "2025-11-19T10:30:00Z")
     """
-    return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    from datetime import timezone
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def get_total_issues(summary: Dict[str, int]) -> int:
