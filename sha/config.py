@@ -164,6 +164,31 @@ SECURITY_HEADERS: Dict[str, Dict[str, Any]] = {
             "example": "Example: Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
         },
     },
+
+    "referrer-policy": {
+        "display_name": "Referrer-Policy",
+        "severity_missing": "high",
+        "description": "Controls how much referrer information is sent with requests",
+        "validation": {
+            # Best practice values (strongest privacy protection)
+            "best_values": ["strict-origin", "no-referrer"],
+            # Acceptable values (good balance of privacy and functionality)
+            "acceptable_values": ["strict-origin-when-cross-origin", "same-origin", "origin", "origin-when-cross-origin"],
+            # Bad/unsafe values (leak too much information)
+            "bad_values": ["unsafe-url", "no-referrer-when-downgrade"],
+        },
+        "messages": {
+            STATUS_GOOD: "Referrer-Policy is properly configured with strong privacy protection",
+            STATUS_ACCEPTABLE: "Referrer-Policy is present with acceptable configuration",
+            STATUS_BAD: "Referrer-Policy has weak configuration that may leak sensitive information",
+            STATUS_MISSING: "Referrer-Policy header is missing - referrer information may leak sensitive data in URLs",
+        },
+        "recommendations": {
+            "missing": "Add: Referrer-Policy: strict-origin-when-cross-origin or strict-origin",
+            "weak": "Use a more restrictive policy like strict-origin or no-referrer to prevent URL parameter leakage",
+            "consider_strict": "Consider using strict-origin for maximum privacy (only sends origin, not full URL path)",
+        },
+    },
 }
 
 

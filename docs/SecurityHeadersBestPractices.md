@@ -120,6 +120,49 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'
 
 ---
 
+## 5. Referrer-Policy
+
+**Purpose:** Controls how much referrer information is sent with requests. Prevents leaking sensitive data in URL parameters (session tokens, personal info) to third parties.
+
+**Best Practice:**
+```
+Referrer-Policy: strict-origin
+```
+or
+```
+Referrer-Policy: no-referrer
+```
+- `strict-origin`: Sends only the origin (scheme, host, port) when making cross-origin requests over HTTPS. No referrer on HTTP downgrade.
+- `no-referrer`: Never sends any referrer information. Maximum privacy but may break some analytics.
+
+**Acceptable:**
+```
+Referrer-Policy: strict-origin-when-cross-origin
+```
+or
+```
+Referrer-Policy: same-origin
+```
+- `strict-origin-when-cross-origin`: Sends full URL for same-origin requests, only origin for cross-origin requests over HTTPS. This is the default in modern browsers and balances privacy with functionality.
+- `same-origin`: Sends full URL only for same-origin requests, no referrer for cross-origin.
+- `origin`: Sends only origin for all requests (weaker than strict-origin but still acceptable).
+
+**Bad/Missing:**
+- Header not present (uses browser default, which may leak full URLs)
+- `unsafe-url`: Always sends full URL, even from HTTPS to HTTP (leaks sensitive URL parameters)
+- `no-referrer-when-downgrade`: Sends full URL except on HTTP downgrade (still leaks URL parameters to third parties)
+
+**Severity if Missing:** High
+
+**Reasoning:** Many web applications include sensitive data in URL parameters (session IDs, authentication tokens, user IDs, search queries). Without this header, that information is sent to any third-party site linked from your pages. This has direct privacy and security implications, especially for applications handling sensitive data.
+
+**Example of the Risk:**
+A user visits: `https://mybank.com/account?session=abc123&account=9876543210`
+
+Without Referrer-Policy, clicking any external link would send this full URL (including session token and account number) to the third-party site.
+
+---
+
 ## Summary Table
 
 | Header | Severity if Missing | Ease of Implementation | Security Impact |
@@ -128,3 +171,4 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'
 | X-Frame-Options | High | Very Easy | High |
 | X-Content-Type-Options | Medium-High | Very Easy | High |
 | CSP | Critical | Hard | Very High |
+| Referrer-Policy | High | Very Easy | High |

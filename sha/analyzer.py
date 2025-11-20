@@ -61,6 +61,8 @@ def analyze_headers(headers: Dict[str, str]) -> List[Finding]:
             finding = analyze_content_type_options(header_value)
         elif header_key == "content-security-policy":
             finding = analyze_csp(header_value)
+        elif header_key == "referrer-policy":
+            finding = analyze_referrer_policy(header_value)
         else:
             # Shouldn't happen, but handle gracefully
             continue
@@ -555,3 +557,91 @@ def check_csp_security_directives(
             return True
 
     return False
+
+
+def analyze_referrer_policy(value: Optional[str]) -> Finding:
+    """
+    Analyze Referrer-Policy header.
+
+    Validation rules:
+    - Missing: High severity
+    - "strict-origin" or "no-referrer": Good (strongest privacy)
+    - Acceptable values (strict-origin-when-cross-origin, same-origin, etc.): Acceptable
+    - Bad values (unsafe-url, no-referrer-when-downgrade): Bad
+
+    Note: If multiple values are provided (comma-separated), the first valid value takes precedence.
+
+    Args:
+        value: Header value or None if missing
+
+    Returns:
+        Finding dictionary
+    """
+    config = SECURITY_HEADERS["referrer-policy"]
+    header_name = config["display_name"]
+
+    # Missing header
+    if value is None:
+        return {
+            "header_name": header_name,
+            "status": STATUS_MISSING,
+            "severity": config["severity_missing"],
+            "message": config["messages"][STATUS_MISSING],
+            "actual_value": None,
+            "recommendation": config["recommendations"]["missing"],
+        }
+
+    # Handle comma-separated values (RFC allows fallback values)
+    # The first valid value takes precedence
+    value_lower = value.strip().lower()
+    if "," in value_lower:
+        # Split by comma and take the first value
+        value_lower = value_lower.split(",")[0].strip()
+
+    # Check for best values (strongest privacy)
+    if value_lower in config["validation"]["best_values"]:
+        return {
+            "header_name": header_name,
+            "status": STATUS_GOOD,
+            "severity": "info",
+            "message": config["messages"][STATUS_GOOD],
+            "actual_value": value,
+            "recommendation": None,
+        }
+
+    # Check for acceptable values
+    if value_lower in config["validation"]["acceptable_values"]:
+        recommendation = None
+        # If it's one of the weaker acceptable values, suggest upgrading
+        if value_lower in ["origin-when-cross-origin", "origin"]:
+            recommendation = config["recommendations"]["consider_strict"]
+
+        return {
+            "header_name": header_name,
+            "status": STATUS_ACCEPTABLE,
+            "severity": "low",
+            "message": config["messages"][STATUS_ACCEPTABLE],
+            "actual_value": value,
+            "recommendation": recommendation,
+        }
+
+    # Check for bad/weak values
+    if value_lower in config["validation"]["bad_values"]:
+        return {
+            "header_name": header_name,
+            "status": STATUS_BAD,
+            "severity": config["severity_missing"],
+            "message": config["messages"][STATUS_BAD],
+            "actual_value": value,
+            "recommendation": config["recommendations"]["weak"],
+        }
+
+    # Unknown/invalid value
+    return {
+        "header_name": header_name,
+        "status": STATUS_BAD,
+        "severity": config["severity_missing"],
+        "message": f"{config['messages'][STATUS_BAD]} - unknown value: {value}",
+        "actual_value": value,
+        "recommendation": config["recommendations"]["missing"],
+    }

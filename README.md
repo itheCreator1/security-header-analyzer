@@ -31,6 +31,7 @@ python sha/main.py https://example.com --json
 - **X-Frame-Options** - Prevents clickjacking attacks
 - **X-Content-Type-Options** - Prevents MIME-type sniffing
 - **Content-Security-Policy** - Prevents XSS attacks
+- **Referrer-Policy** - Controls referrer information leakage
 
 ## Example Output
 
