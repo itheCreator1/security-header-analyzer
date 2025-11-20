@@ -209,11 +209,11 @@ def fetch_headers(
             f"Too many redirects (max: {max_redirects}) while fetching {url}"
         ) from e
 
-    except requests.exceptions.ConnectionError as e:
-        raise NetworkError(f"Failed to connect to {url}: {e}") from e
-
     except requests.exceptions.SSLError as e:
         raise NetworkError(f"SSL/TLS error for {url}: {e}") from e
+
+    except requests.exceptions.ConnectionError as e:
+        raise NetworkError(f"Failed to connect to {url}: {e}") from e
 
     except requests.exceptions.RequestException as e:
         raise NetworkError(f"Request failed for {url}: {e}") from e
