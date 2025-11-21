@@ -1,9 +1,8 @@
 """
 Configuration module for Security Header Analyzer.
 
-This module defines security header standards, validation rules, and constants
-used throughout the application. Based on industry best practices and OWASP
-recommendations.
+This module defines shared constants and exceptions used throughout the application.
+Individual header configurations have been moved to their respective analyzer modules.
 """
 
 from typing import Dict, List, Any
@@ -38,158 +37,6 @@ STATUS_GOOD = "good"
 STATUS_ACCEPTABLE = "acceptable"
 STATUS_BAD = "bad"
 STATUS_MISSING = "missing"
-
-# Security Header Standards
-# Based on SecurityHeadersBestPractices.md and OWASP recommendations
-SECURITY_HEADERS: Dict[str, Dict[str, Any]] = {
-    "strict-transport-security": {
-        "display_name": "Strict-Transport-Security",
-        "severity_missing": "critical",
-        "description": "Enforces HTTPS connections to prevent man-in-the-middle attacks",
-        "validation": {
-            # Minimum max-age: 126 days (10886400 seconds)
-            "min_max_age": 10886400,
-            # Best practice max-age: 1 year (31536000 seconds)
-            "best_max_age": 31536000,
-            # Required directives for best practice
-            "required_directives": ["includesubdomains"],
-            # Optional but recommended directives
-            "recommended_directives": ["preload"],
-        },
-        "messages": {
-            STATUS_GOOD: "HSTS is properly configured with strong security settings",
-            STATUS_ACCEPTABLE: "HSTS is present but could be improved",
-            STATUS_BAD: "HSTS is present but improperly configured",
-            STATUS_MISSING: "HSTS header is missing - connections vulnerable to downgrade attacks",
-        },
-        "recommendations": {
-            "missing": "Add: Strict-Transport-Security: max-age=31536000; includeSubDomains; preload",
-            "low_max_age": "Increase max-age to at least 10886400 (126 days), preferably 31536000 (1 year)",
-            "no_subdomains": "Add includeSubDomains directive to protect all subdomains",
-            "no_preload": "Consider adding preload directive and submitting to HSTS preload list",
-        },
-    },
-
-    "x-frame-options": {
-        "display_name": "X-Frame-Options",
-        "severity_missing": "high",
-        "description": "Prevents clickjacking attacks by controlling iframe embedding",
-        "validation": {
-            "best_values": ["deny"],
-            "acceptable_values": ["sameorigin"],
-            "deprecated_values": ["allow-from"],
-        },
-        "messages": {
-            STATUS_GOOD: "X-Frame-Options is properly configured to prevent clickjacking",
-            STATUS_ACCEPTABLE: "X-Frame-Options allows same-origin framing (acceptable for most use cases)",
-            STATUS_BAD: "X-Frame-Options is using deprecated or insecure configuration",
-            STATUS_MISSING: "X-Frame-Options header is missing - site vulnerable to clickjacking attacks",
-        },
-        "recommendations": {
-            "missing": "Add: X-Frame-Options: DENY (or SAMEORIGIN if iframe embedding is needed)",
-            "allow_from": "Replace deprecated ALLOW-FROM with Content-Security-Policy frame-ancestors directive",
-            "use_deny": "Consider using DENY instead of SAMEORIGIN for maximum protection",
-        },
-    },
-
-    "x-content-type-options": {
-        "display_name": "X-Content-Type-Options",
-        "severity_missing": "medium-high",
-        "description": "Prevents MIME-type sniffing attacks",
-        "validation": {
-            "required_value": "nosniff",
-        },
-        "messages": {
-            STATUS_GOOD: "X-Content-Type-Options is properly configured",
-            STATUS_ACCEPTABLE: "X-Content-Type-Options is properly configured",
-            STATUS_BAD: "X-Content-Type-Options has incorrect value",
-            STATUS_MISSING: "X-Content-Type-Options header is missing - browser may perform MIME-type sniffing",
-        },
-        "recommendations": {
-            "missing": "Add: X-Content-Type-Options: nosniff",
-            "wrong_value": "Set value to: nosniff",
-        },
-    },
-
-    "content-security-policy": {
-        "display_name": "Content-Security-Policy",
-        "severity_missing": "critical",
-        "description": "Prevents XSS and other injection attacks by controlling resource loading",
-        "validation": {
-            # Dangerous patterns that indicate insecure CSP
-            "dangerous_patterns": {
-                "unsafe_inline_script": {
-                    "directives": ["script-src", "default-src"],
-                    "values": ["'unsafe-inline'"],
-                    "severity": "high",
-                    "message": "CSP allows unsafe-inline for scripts, defeating XSS protection",
-                },
-                "unsafe_eval": {
-                    "directives": ["script-src", "default-src"],
-                    "values": ["'unsafe-eval'"],
-                    "severity": "medium",
-                    "message": "CSP allows unsafe-eval, which can enable some XSS attacks",
-                },
-                "wildcard_script": {
-                    "directives": ["script-src"],
-                    "values": ["*", "data:", "http:", "https:"],
-                    "severity": "high",
-                    "message": "CSP allows scripts from any source (wildcard)",
-                },
-                "wildcard_default": {
-                    "directives": ["default-src"],
-                    "values": ["*"],
-                    "severity": "high",
-                    "message": "CSP default-src is wildcard, allowing resources from any source",
-                },
-            },
-            # Good patterns that indicate secure CSP
-            "good_patterns": {
-                "restrictive_default": ["'self'", "'none'"],
-                "security_directives": ["frame-ancestors", "base-uri", "form-action"],
-            },
-        },
-        "messages": {
-            STATUS_GOOD: "CSP is properly configured with restrictive policy",
-            STATUS_ACCEPTABLE: "CSP is present but could be more restrictive",
-            STATUS_BAD: "CSP is present but contains dangerous directives",
-            STATUS_MISSING: "CSP header is missing - site vulnerable to XSS and injection attacks",
-        },
-        "recommendations": {
-            "missing": "Add a Content-Security-Policy header with restrictive directives",
-            "unsafe_inline": "Remove 'unsafe-inline' from script-src and use nonces or hashes instead",
-            "unsafe_eval": "Remove 'unsafe-eval' from script-src if possible",
-            "too_permissive": "Restrict source lists to specific trusted domains instead of wildcards",
-            "add_directives": "Consider adding security directives: frame-ancestors, base-uri, form-action",
-            "example": "Example: Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
-        },
-    },
-
-    "referrer-policy": {
-        "display_name": "Referrer-Policy",
-        "severity_missing": "high",
-        "description": "Controls how much referrer information is sent with requests",
-        "validation": {
-            # Best practice values (strongest privacy protection)
-            "best_values": ["strict-origin", "no-referrer"],
-            # Acceptable values (good balance of privacy and functionality)
-            "acceptable_values": ["strict-origin-when-cross-origin", "same-origin", "origin", "origin-when-cross-origin"],
-            # Bad/unsafe values (leak too much information)
-            "bad_values": ["unsafe-url", "no-referrer-when-downgrade"],
-        },
-        "messages": {
-            STATUS_GOOD: "Referrer-Policy is properly configured with strong privacy protection",
-            STATUS_ACCEPTABLE: "Referrer-Policy is present with acceptable configuration",
-            STATUS_BAD: "Referrer-Policy has weak configuration that may leak sensitive information",
-            STATUS_MISSING: "Referrer-Policy header is missing - referrer information may leak sensitive data in URLs",
-        },
-        "recommendations": {
-            "missing": "Add: Referrer-Policy: strict-origin-when-cross-origin or strict-origin",
-            "weak": "Use a more restrictive policy like strict-origin or no-referrer to prevent URL parameter leakage",
-            "consider_strict": "Consider using strict-origin for maximum privacy (only sends origin, not full URL path)",
-        },
-    },
-}
 
 
 # Custom Exception Classes
@@ -252,7 +99,8 @@ class HTTPError(SecurityHeaderAnalyzerError):
         self.headers = headers or {}
 
 
-# Utility functions for config validation
+# Utility functions for backward compatibility with old config structure
+# These now delegate to the analyzer registry
 
 def get_header_config(header_name: str) -> Dict[str, Any]:
     """
@@ -267,7 +115,8 @@ def get_header_config(header_name: str) -> Dict[str, Any]:
     Raises:
         KeyError: If header name is not found in configuration
     """
-    return SECURITY_HEADERS[header_name.lower()]
+    from .analyzers import get_config
+    return get_config(header_name.lower())
 
 
 def get_all_header_names() -> List[str]:
@@ -277,7 +126,8 @@ def get_all_header_names() -> List[str]:
     Returns:
         List of header names
     """
-    return list(SECURITY_HEADERS.keys())
+    from .analyzers import get_all_header_keys
+    return get_all_header_keys()
 
 
 def get_severity_rank(severity: str) -> int:
@@ -310,3 +160,13 @@ def is_valid_severity(severity: str) -> bool:
         True if valid, False otherwise
     """
     return severity.lower() in SEVERITY_LEVELS
+
+
+# Backward compatibility: SECURITY_HEADERS dict
+# This uses a custom __getattr__ at module level (Python 3.7+)
+# to lazily load from analyzer configs when accessed
+def __getattr__(name):
+    if name == "SECURITY_HEADERS":
+        from .analyzers import CONFIG_REGISTRY
+        return CONFIG_REGISTRY
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
