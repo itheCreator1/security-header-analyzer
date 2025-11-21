@@ -92,6 +92,12 @@ Exit codes:
     )
 
     parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug mode (show full error tracebacks)",
+    )
+
+    parser.add_argument(
         "--version",
         action="version",
         version=f"%(prog)s {__version__}",
@@ -196,7 +202,7 @@ def main() -> NoReturn:
     except Exception as e:
         # Unexpected error
         print(f"Error: Unexpected error - {e}", file=sys.stderr)
-        if "--debug" in sys.argv:
+        if args.debug:
             # Show traceback in debug mode
             import traceback
             traceback.print_exc()

@@ -7,7 +7,7 @@ and security protections (SSRF prevention).
 
 import socket
 import ipaddress
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 from urllib.parse import urlparse
 import requests
 
@@ -91,6 +91,15 @@ def validate_url_safety(url: str) -> None:
 
     Raises:
         InvalidURLError: If URL is invalid or unsafe
+
+    Security Note:
+        This function has a known TOCTOU (Time-of-Check-Time-of-Use) vulnerability:
+        DNS resolution could change between this validation and the actual request.
+        An attacker controlling DNS could pass validation with a public IP, then
+        change DNS to point to a private IP before the request is made.
+
+        Additionally, redirects could bypass this check. Consider using validate_ip()
+        on the final redirect destination for stronger protection.
     """
     try:
         parsed = urlparse(url)
@@ -112,23 +121,77 @@ def validate_url_safety(url: str) -> None:
         # Resolve hostname to IP and check if it's private
         try:
             # Get all IP addresses for this hostname
+            # Note: DNS resolution timeout is controlled by OS, typically 30s
             addr_info = socket.getaddrinfo(hostname, None)
 
             for info in addr_info:
                 ip_str = info[4][0]
 
                 # Check if this IP is in a private range
-                if is_private_ip(ip_str):
-                    raise InvalidURLError(
-                        f"URL resolves to private IP address {ip_str}. "
-                        f"Fetching from private networks is not allowed (SSRF protection)."
-                    )
+                # Wrap in try-except to handle malformed IPs from DNS
+                try:
+                    if is_private_ip(ip_str):
+                        raise InvalidURLError(
+                            f"URL resolves to private IP address {ip_str}. "
+                            f"Fetching from private networks is not allowed (SSRF protection)."
+                        )
+                except ValueError as ip_err:
+                    raise InvalidURLError(f"DNS returned invalid IP address: {ip_str}") from ip_err
 
         except socket.gaierror as e:
             raise InvalidURLError(f"Failed to resolve hostname {hostname}: {e}")
 
     except ValueError as e:
         raise InvalidURLError(f"Malformed URL: {e}")
+
+
+def validate_redirect_destination(final_url: str) -> None:
+    """
+    Validate that a redirect destination is safe (DNS rebinding protection).
+
+    This should be called after following redirects to ensure the final
+    destination doesn't resolve to a private IP address.
+
+    Args:
+        final_url: The final URL after following redirects
+
+    Raises:
+        InvalidURLError: If final URL resolves to private IP
+
+    Note:
+        This provides additional protection against DNS rebinding attacks
+        where DNS changes between initial validation and redirect resolution.
+    """
+    try:
+        parsed = urlparse(final_url)
+        if not parsed.hostname:
+            return  # No hostname to validate
+
+        hostname = parsed.hostname.lower()
+
+        # Skip localhost check as original validation already caught it
+        # But re-validate IP resolution as DNS could have changed
+        try:
+            addr_info = socket.getaddrinfo(hostname, None)
+
+            for info in addr_info:
+                ip_str = info[4][0]
+                try:
+                    if is_private_ip(ip_str):
+                        raise InvalidURLError(
+                            f"Redirect destination resolves to private IP {ip_str}. "
+                            f"This may be a DNS rebinding attack (SSRF protection)."
+                        )
+                except ValueError as ip_err:
+                    raise InvalidURLError(f"DNS returned invalid IP address: {ip_str}") from ip_err
+
+        except socket.gaierror:
+            # DNS resolution failure - let it fail naturally on request
+            pass
+
+    except ValueError:
+        # Malformed URL - let it fail naturally on request
+        pass
 
 
 def fetch_headers(
@@ -161,6 +224,7 @@ def fetch_headers(
         - All header names are converted to lowercase for consistency
         - Uses HEAD request for efficiency (no body download)
         - Even on HTTPError, headers may still be available in the exception
+        - Validates redirect destinations to prevent DNS rebinding attacks
     """
     # Normalize URL (add https:// if needed)
     url = normalize_url(url)
@@ -185,6 +249,10 @@ def fetch_headers(
             timeout=timeout,
             allow_redirects=follow_redirects,
         )
+
+        # DNS Rebinding Protection: Validate final URL after redirects
+        if follow_redirects and hasattr(response, 'url') and isinstance(response.url, str) and response.url != url:
+            validate_redirect_destination(response.url)
 
         # Check for HTTP errors
         if response.status_code >= 400:
@@ -225,7 +293,7 @@ def fetch_headers_safe(
     follow_redirects: bool = True,
     max_redirects: int = DEFAULT_MAX_REDIRECTS,
     user_agent: Optional[str] = None,
-) -> tuple[Dict[str, str], Optional[Exception]]:
+) -> Tuple[Dict[str, str], Optional[Exception]]:
     """
     Safely fetch headers without raising exceptions.
 
