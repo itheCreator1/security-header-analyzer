@@ -65,6 +65,8 @@ from .analyzers.csp import (
     check_csp_dangerous_patterns,
     check_csp_restrictive_default,
     check_csp_security_directives,
+    has_nonces_or_hashes,
+    has_strict_dynamic,
 )
 from .analyzers.referrer_policy import analyze as analyze_referrer_policy
 
@@ -83,4 +85,6 @@ __all__ = [
     "check_csp_dangerous_patterns",
     "check_csp_restrictive_default",
     "check_csp_security_directives",
+    "has_nonces_or_hashes",
+    "has_strict_dynamic",
 ]

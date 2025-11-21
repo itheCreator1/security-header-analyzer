@@ -13,6 +13,10 @@ from . import xframe
 from . import content_type
 from . import csp
 from . import referrer_policy
+from . import permissions_policy
+from . import coep
+from . import coop
+from . import corp
 
 
 # Registry mapping header keys to analyzer functions
@@ -22,6 +26,10 @@ ANALYZER_REGISTRY: Dict[str, Callable] = {
     content_type.HEADER_KEY: content_type.analyze,
     csp.HEADER_KEY: csp.analyze,
     referrer_policy.HEADER_KEY: referrer_policy.analyze,
+    permissions_policy.HEADER_KEY: permissions_policy.analyze,
+    coep.HEADER_KEY: coep.analyze,
+    coop.HEADER_KEY: coop.analyze,
+    corp.HEADER_KEY: corp.analyze,
 }
 
 # Registry mapping header keys to configurations
@@ -31,6 +39,10 @@ CONFIG_REGISTRY: Dict[str, Dict[str, Any]] = {
     content_type.HEADER_KEY: content_type.CONFIG,
     csp.HEADER_KEY: csp.CONFIG,
     referrer_policy.HEADER_KEY: referrer_policy.CONFIG,
+    permissions_policy.HEADER_KEY: permissions_policy.CONFIG,
+    coep.HEADER_KEY: coep.CONFIG,
+    coop.HEADER_KEY: coop.CONFIG,
+    corp.HEADER_KEY: corp.CONFIG,
 }
 
 
@@ -84,4 +96,8 @@ __all__ = [
     "content_type",
     "csp",
     "referrer_policy",
+    "permissions_policy",
+    "coep",
+    "coop",
+    "corp",
 ]

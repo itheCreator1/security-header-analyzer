@@ -105,6 +105,39 @@ def parse_csp(value: str) -> Dict[str, List[str]]:
     return directives
 
 
+def has_nonces_or_hashes(directive_values: List[str]) -> bool:
+    """
+    Check if a directive uses nonces or hashes (better than unsafe-inline).
+
+    Args:
+        directive_values: List of values for a directive
+
+    Returns:
+        True if nonces or hashes are present
+    """
+    for value in directive_values:
+        # Check for nonce: 'nonce-<value>'
+        if value.startswith("'nonce-"):
+            return True
+        # Check for hash: 'sha256-<hash>', 'sha384-<hash>', 'sha512-<hash>'
+        if value.startswith(("'sha256-", "'sha384-", "'sha512-")):
+            return True
+    return False
+
+
+def has_strict_dynamic(directive_values: List[str]) -> bool:
+    """
+    Check if a directive uses 'strict-dynamic' (modern best practice).
+
+    Args:
+        directive_values: List of values for a directive
+
+    Returns:
+        True if 'strict-dynamic' is present
+    """
+    return "'strict-dynamic'" in directive_values
+
+
 def check_csp_dangerous_patterns(
     directives: Dict[str, List[str]], config: Dict[str, Any]
 ) -> List[Dict[str, str]]:
@@ -117,6 +150,10 @@ def check_csp_dangerous_patterns(
 
     Returns:
         List of dangerous pattern findings (empty if none found)
+
+    Note:
+        'unsafe-inline' is not considered dangerous if nonces, hashes,
+        or 'strict-dynamic' are also present, as they override it.
     """
     findings = []
     dangerous_patterns = config["validation"]["dangerous_patterns"]
@@ -126,6 +163,24 @@ def check_csp_dangerous_patterns(
         for directive_name in pattern_config["directives"]:
             if directive_name in directives:
                 directive_values = directives[directive_name]
+
+                # Special handling for unsafe-inline: it's OK if nonces/hashes/strict-dynamic present
+                if pattern_name == "unsafe_inline_script":
+                    if "'unsafe-inline'" in directive_values:
+                        # Check if mitigated by nonces, hashes, or strict-dynamic
+                        if has_nonces_or_hashes(directive_values) or has_strict_dynamic(directive_values):
+                            # unsafe-inline is ignored when these are present
+                            continue
+                        else:
+                            findings.append({
+                                "severity": pattern_config["severity"],
+                                "message": pattern_config["message"],
+                                "recommendation": config["recommendations"].get(
+                                    pattern_name.replace("_", "-"),
+                                    config["recommendations"]["too_permissive"]
+                                ),
+                            })
+                    continue
 
                 # Check if any dangerous value is present
                 for dangerous_value in pattern_config["values"]:
