@@ -247,3 +247,142 @@ class TestAnalyzeCSP:
         result = analyze_csp(csp)
 
         assert result["status"] == STATUS_ACCEPTABLE
+
+
+# ============================================================================
+# Advanced CSP Feature Tests (Nonces, Hashes, strict-dynamic)
+# ============================================================================
+
+
+class TestCSPNonceDetection:
+    """Test CSP nonce detection and handling."""
+
+    def test_has_nonces_or_hashes_with_nonce(self):
+        """Test detection of nonce in directive values."""
+        from sha.analyzers.csp import has_nonces_or_hashes
+
+        directive_values = ["'self'", "'nonce-abc123'"]
+        assert has_nonces_or_hashes(directive_values) is True
+
+    def test_has_nonces_or_hashes_multiple_nonces(self):
+        """Test detection of multiple nonces."""
+        from sha.analyzers.csp import has_nonces_or_hashes
+
+        directive_values = ["'nonce-abc123'", "'nonce-xyz789'"]
+        assert has_nonces_or_hashes(directive_values) is True
+
+    def test_has_nonces_or_hashes_without_nonce(self):
+        """Test no detection when nonce is absent."""
+        from sha.analyzers.csp import has_nonces_or_hashes
+
+        directive_values = ["'self'", "https://example.com"]
+        assert has_nonces_or_hashes(directive_values) is False
+
+    def test_has_nonces_or_hashes_false_positive(self):
+        """Test that partial nonce-like strings don't match."""
+        from sha.analyzers.csp import has_nonces_or_hashes
+
+        directive_values = ["nonce-abc", "nonce"]  # Missing quotes
+        assert has_nonces_or_hashes(directive_values) is False
+
+
+class TestCSPHashDetection:
+    """Test CSP hash detection and handling."""
+
+    def test_has_nonces_or_hashes_with_sha256(self):
+        """Test detection of SHA256 hash."""
+        from sha.analyzers.csp import has_nonces_or_hashes
+
+        directive_values = ["'self'", "'sha256-abc123def456'"]
+        assert has_nonces_or_hashes(directive_values) is True
+
+    def test_has_nonces_or_hashes_with_sha384(self):
+        """Test detection of SHA384 hash."""
+        from sha.analyzers.csp import has_nonces_or_hashes
+
+        directive_values = ["'sha384-abcdef123456'"]
+        assert has_nonces_or_hashes(directive_values) is True
+
+    def test_has_nonces_or_hashes_with_sha512(self):
+        """Test detection of SHA512 hash."""
+        from sha.analyzers.csp import has_nonces_or_hashes
+
+        directive_values = ["'sha512-abcdef123456'"]
+        assert has_nonces_or_hashes(directive_values) is True
+
+    def test_has_nonces_or_hashes_multiple_hashes(self):
+        """Test detection of multiple hash types."""
+        from sha.analyzers.csp import has_nonces_or_hashes
+
+        directive_values = ["'sha256-abc'", "'sha384-def'", "'sha512-ghi'"]
+        assert has_nonces_or_hashes(directive_values) is True
+
+
+class TestCSPStrictDynamic:
+    """Test CSP strict-dynamic detection."""
+
+    def test_has_strict_dynamic_present(self):
+        """Test detection of strict-dynamic."""
+        from sha.analyzers.csp import has_strict_dynamic
+
+        directive_values = ["'self'", "'strict-dynamic'", "'nonce-abc'"]
+        assert has_strict_dynamic(directive_values) is True
+
+    def test_has_strict_dynamic_absent(self):
+        """Test no detection when strict-dynamic is absent."""
+        from sha.analyzers.csp import has_strict_dynamic
+
+        directive_values = ["'self'", "'nonce-abc'"]
+        assert has_strict_dynamic(directive_values) is False
+
+    def test_has_strict_dynamic_only(self):
+        """Test detection with only strict-dynamic."""
+        from sha.analyzers.csp import has_strict_dynamic
+
+        directive_values = ["'strict-dynamic'"]
+        assert has_strict_dynamic(directive_values) is True
+
+
+class TestCSPUnsafeInlineMitigation:
+    """Test that unsafe-inline is properly mitigated by nonces/hashes/strict-dynamic."""
+
+    def test_unsafe_inline_mitigated_by_nonce(self):
+        """Test unsafe-inline is not flagged when nonce is present."""
+        csp = "script-src 'self' 'unsafe-inline' 'nonce-abc123'"
+        result = analyze_csp(csp)
+
+        # Should NOT be BAD because nonce mitigates unsafe-inline
+        assert result["status"] != STATUS_BAD
+
+    def test_unsafe_inline_mitigated_by_hash(self):
+        """Test unsafe-inline is not flagged when hash is present."""
+        csp = "script-src 'self' 'unsafe-inline' 'sha256-abc123def456'"
+        result = analyze_csp(csp)
+
+        # Should NOT be BAD because hash mitigates unsafe-inline
+        assert result["status"] != STATUS_BAD
+
+    def test_unsafe_inline_mitigated_by_strict_dynamic(self):
+        """Test unsafe-inline is not flagged when strict-dynamic is present."""
+        csp = "script-src 'self' 'unsafe-inline' 'strict-dynamic' 'nonce-abc'"
+        result = analyze_csp(csp)
+
+        # Should NOT be BAD because strict-dynamic mitigates unsafe-inline
+        assert result["status"] != STATUS_BAD
+
+    def test_unsafe_inline_not_mitigated(self):
+        """Test unsafe-inline is flagged when no mitigation is present."""
+        csp = "script-src 'self' 'unsafe-inline'"
+        result = analyze_csp(csp)
+
+        # Should be BAD because no nonce/hash/strict-dynamic
+        assert result["status"] == STATUS_BAD
+        assert "unsafe-inline" in result["message"]
+
+    def test_unsafe_inline_in_default_src_mitigated(self):
+        """Test unsafe-inline in default-src is mitigated by nonce."""
+        csp = "default-src 'self' 'unsafe-inline' 'nonce-xyz789'"
+        result = analyze_csp(csp)
+
+        # Should NOT be BAD because nonce mitigates unsafe-inline
+        assert result["status"] != STATUS_BAD
