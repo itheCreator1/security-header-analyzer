@@ -7,7 +7,7 @@ name = "security-header-analyzer"
 version = "1.0.0"
 description = "Analyze HTTP security headers against best practices"
 requires-python = ">=3.8"
-dependencies = ["requests>=2.28.0"]
+dependencies = ["requests>=2.28.0,<3.0"]
 
 [project.scripts]
 sha = "sha.main:main"
