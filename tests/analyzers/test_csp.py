@@ -6,14 +6,15 @@ restrictive defaults, and security directives.
 """
 
 import pytest
+
 from sha.analyzer import (
     analyze_csp,
-    parse_csp,
     check_csp_dangerous_patterns,
     check_csp_restrictive_default,
     check_csp_security_directives,
+    parse_csp,
 )
-from sha.config import STATUS_GOOD, STATUS_ACCEPTABLE, STATUS_BAD, STATUS_MISSING, SECURITY_HEADERS
+from sha.config import SECURITY_HEADERS, STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
 
 class TestParseCSP:
@@ -28,7 +29,9 @@ class TestParseCSP:
 
     def test_parse_csp_multiple_directives(self):
         """Test parsing CSP with multiple directives."""
-        result = parse_csp("default-src 'self'; script-src 'self' https://cdn.example.com; object-src 'none'")
+        result = parse_csp(
+            "default-src 'self'; script-src 'self' https://cdn.example.com; object-src 'none'"
+        )
 
         assert "default-src" in result
         assert "script-src" in result
@@ -98,7 +101,10 @@ class TestCheckCSPDangerousPatterns:
         findings = check_csp_dangerous_patterns(directives, config)
 
         assert len(findings) > 0
-        assert any("wildcard" in f["message"].lower() or "any source" in f["message"].lower() for f in findings)
+        assert any(
+            "wildcard" in f["message"].lower() or "any source" in f["message"].lower()
+            for f in findings
+        )
 
     def test_check_dangerous_wildcard_default(self):
         """Test detection of wildcard in default-src."""

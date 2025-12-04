@@ -7,10 +7,9 @@ Supports both human-readable text output and JSON output for automation.
 
 import json
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
-from .config import STATUS_MISSING, STATUS_BAD, STATUS_ACCEPTABLE, STATUS_GOOD
-
+from .config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
 # Type alias for finding
 Finding = Dict[str, Any]
@@ -253,6 +252,7 @@ def get_timestamp() -> str:
         Timestamp string (e.g., "2025-11-19T10:30:00Z")
     """
     from datetime import timezone
+
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 

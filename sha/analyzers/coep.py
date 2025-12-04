@@ -6,10 +6,9 @@ Cross-Origin-Embedder-Policy header which enables cross-origin isolation
 and allows use of powerful features like SharedArrayBuffer.
 """
 
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
-from ..config import STATUS_GOOD, STATUS_ACCEPTABLE, STATUS_BAD, STATUS_MISSING
-
+from ..config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
 HEADER_KEY = "cross-origin-embedder-policy"
 

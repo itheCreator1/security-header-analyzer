@@ -6,22 +6,23 @@ and utility functions.
 """
 
 import pytest
+
 from sha.config import (
+    DEFAULT_MAX_REDIRECTS,
+    DEFAULT_TIMEOUT,
+    PRIVATE_IP_RANGES,
     SECURITY_HEADERS,
     SEVERITY_LEVELS,
-    STATUS_GOOD,
     STATUS_ACCEPTABLE,
     STATUS_BAD,
+    STATUS_GOOD,
     STATUS_MISSING,
-    DEFAULT_TIMEOUT,
-    DEFAULT_MAX_REDIRECTS,
-    PRIVATE_IP_RANGES,
-    SecurityHeaderAnalyzerError,
-    NetworkError,
-    InvalidURLError,
     HTTPError,
-    get_header_config,
+    InvalidURLError,
+    NetworkError,
+    SecurityHeaderAnalyzerError,
     get_all_header_names,
+    get_header_config,
     get_severity_rank,
     is_valid_severity,
 )
@@ -44,7 +45,14 @@ class TestSecurityHeadersConfiguration:
 
     def test_header_config_structure(self):
         """Test that each header config has required fields."""
-        required_fields = ["display_name", "severity_missing", "description", "validation", "messages", "recommendations"]
+        required_fields = [
+            "display_name",
+            "severity_missing",
+            "description",
+            "validation",
+            "messages",
+            "recommendations",
+        ]
 
         for header_key, config in SECURITY_HEADERS.items():
             for field in required_fields:
@@ -52,16 +60,25 @@ class TestSecurityHeadersConfiguration:
 
     def test_header_display_names(self):
         """Test that display names are properly formatted."""
-        assert SECURITY_HEADERS["strict-transport-security"]["display_name"] == "Strict-Transport-Security"
+        assert (
+            SECURITY_HEADERS["strict-transport-security"]["display_name"]
+            == "Strict-Transport-Security"
+        )
         assert SECURITY_HEADERS["x-frame-options"]["display_name"] == "X-Frame-Options"
-        assert SECURITY_HEADERS["x-content-type-options"]["display_name"] == "X-Content-Type-Options"
-        assert SECURITY_HEADERS["content-security-policy"]["display_name"] == "Content-Security-Policy"
+        assert (
+            SECURITY_HEADERS["x-content-type-options"]["display_name"] == "X-Content-Type-Options"
+        )
+        assert (
+            SECURITY_HEADERS["content-security-policy"]["display_name"] == "Content-Security-Policy"
+        )
 
     def test_severity_levels_defined(self):
         """Test that all severity levels are defined for each header."""
         for header_key, config in SECURITY_HEADERS.items():
             severity_missing = config["severity_missing"]
-            assert severity_missing in SEVERITY_LEVELS, f"Invalid severity_missing for {header_key}: {severity_missing}"
+            assert (
+                severity_missing in SEVERITY_LEVELS
+            ), f"Invalid severity_missing for {header_key}: {severity_missing}"
 
     def test_messages_for_all_statuses(self):
         """Test that each header has messages for all statuses."""

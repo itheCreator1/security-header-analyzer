@@ -6,8 +6,9 @@ various policy values from most to least restrictive.
 """
 
 import pytest
+
 from sha.analyzer import analyze_referrer_policy
-from sha.config import STATUS_GOOD, STATUS_ACCEPTABLE, STATUS_BAD, STATUS_MISSING
+from sha.config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
 
 class TestAnalyzeReferrerPolicy:
@@ -132,7 +133,9 @@ class TestAnalyzeReferrerPolicy:
     def test_analyze_referrer_policy_comma_separated_values(self):
         """Test comma-separated values (fallback mechanism)."""
         # First value takes precedence
-        finding = analyze_referrer_policy("origin-when-cross-origin, strict-origin-when-cross-origin")
+        finding = analyze_referrer_policy(
+            "origin-when-cross-origin, strict-origin-when-cross-origin"
+        )
 
         assert finding["status"] == STATUS_ACCEPTABLE
         assert finding["severity"] == "low"

@@ -10,7 +10,6 @@ from typing import Any, Dict, Optional
 
 from ..config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
-
 HEADER_KEY = "x-permitted-cross-domain-policies"
 
 CONFIG = {
@@ -124,14 +123,10 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
                 f"'all' allows policy files from anywhere (very insecure)"
             )
         elif value_lower == "by-content-type":
-            message = (
-                f"{CONFIG['messages'][STATUS_BAD]} - "
-                f"'by-content-type' is too permissive"
-            )
+            message = f"{CONFIG['messages'][STATUS_BAD]} - " f"'by-content-type' is too permissive"
         else:  # by-ftp-filename
             message = (
-                f"{CONFIG['messages'][STATUS_BAD]} - "
-                f"'by-ftp-filename' is legacy and insecure"
+                f"{CONFIG['messages'][STATUS_BAD]} - " f"'by-ftp-filename' is legacy and insecure"
             )
 
         return {
@@ -148,8 +143,7 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
         "header_name": header_name,
         "status": STATUS_BAD,
         "severity": CONFIG["severity_missing"],
-        "message": f"{CONFIG['messages'][STATUS_BAD]} - "
-        f"unknown value '{value}'",
+        "message": f"{CONFIG['messages'][STATUS_BAD]} - " f"unknown value '{value}'",
         "actual_value": value,
         "recommendation": CONFIG["recommendations"]["bad_value"],
     }

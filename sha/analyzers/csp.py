@@ -5,10 +5,9 @@ This module contains configuration and analysis logic for the
 Content-Security-Policy header which prevents XSS and injection attacks.
 """
 
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
-from ..config import STATUS_GOOD, STATUS_ACCEPTABLE, STATUS_BAD, STATUS_MISSING
-
+from ..config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
 HEADER_KEY = "content-security-policy"
 
@@ -87,7 +86,7 @@ def parse_csp(value: str) -> Dict[str, List[str]]:
     directives = {}
 
     # Split by semicolon to get individual directives
-    for directive_str in value.split(';'):
+    for directive_str in value.split(";"):
         directive_str = directive_str.strip()
         if not directive_str:
             continue
@@ -168,32 +167,38 @@ def check_csp_dangerous_patterns(
                 if pattern_name == "unsafe_inline_script":
                     if "'unsafe-inline'" in directive_values:
                         # Check if mitigated by nonces, hashes, or strict-dynamic
-                        if has_nonces_or_hashes(directive_values) or has_strict_dynamic(directive_values):
+                        if has_nonces_or_hashes(directive_values) or has_strict_dynamic(
+                            directive_values
+                        ):
                             # unsafe-inline is ignored when these are present
                             continue
                         else:
-                            findings.append({
-                                "severity": pattern_config["severity"],
-                                "message": pattern_config["message"],
-                                "recommendation": config["recommendations"].get(
-                                    pattern_name.replace("_", "-"),
-                                    config["recommendations"]["too_permissive"]
-                                ),
-                            })
+                            findings.append(
+                                {
+                                    "severity": pattern_config["severity"],
+                                    "message": pattern_config["message"],
+                                    "recommendation": config["recommendations"].get(
+                                        pattern_name.replace("_", "-"),
+                                        config["recommendations"]["too_permissive"],
+                                    ),
+                                }
+                            )
                     continue
 
                 # Check if any dangerous value is present
                 for dangerous_value in pattern_config["values"]:
                     # Check for exact match or wildcard match
                     if dangerous_value in directive_values:
-                        findings.append({
-                            "severity": pattern_config["severity"],
-                            "message": pattern_config["message"],
-                            "recommendation": config["recommendations"].get(
-                                pattern_name.replace("_", "-"),
-                                config["recommendations"]["too_permissive"]
-                            ),
-                        })
+                        findings.append(
+                            {
+                                "severity": pattern_config["severity"],
+                                "message": pattern_config["message"],
+                                "recommendation": config["recommendations"].get(
+                                    pattern_name.replace("_", "-"),
+                                    config["recommendations"]["too_permissive"],
+                                ),
+                            }
+                        )
                         break
 
     # Sort by severity (critical first)
@@ -203,9 +208,7 @@ def check_csp_dangerous_patterns(
     return findings
 
 
-def check_csp_restrictive_default(
-    directives: Dict[str, List[str]], config: Dict[str, Any]
-) -> bool:
+def check_csp_restrictive_default(directives: Dict[str, List[str]], config: Dict[str, Any]) -> bool:
     """
     Check if CSP has a restrictive default-src directive.
 
@@ -230,9 +233,7 @@ def check_csp_restrictive_default(
     return False
 
 
-def check_csp_security_directives(
-    directives: Dict[str, List[str]], config: Dict[str, Any]
-) -> bool:
+def check_csp_security_directives(directives: Dict[str, List[str]], config: Dict[str, Any]) -> bool:
     """
     Check if CSP has important security directives.
 

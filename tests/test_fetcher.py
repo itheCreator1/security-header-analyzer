@@ -4,21 +4,23 @@ Tests for fetcher module.
 Tests URL normalization, SSRF protection, header fetching with mocked requests.
 """
 
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 import requests
+
+from sha.config import (
+    HTTPError,
+    InvalidURLError,
+    NetworkError,
+)
 from sha.fetcher import (
-    normalize_url,
-    is_private_ip,
-    validate_url_safety,
     fetch_headers,
     fetch_headers_safe,
     get_final_url,
-)
-from sha.config import (
-    NetworkError,
-    InvalidURLError,
-    HTTPError,
+    is_private_ip,
+    normalize_url,
+    validate_url_safety,
 )
 
 
@@ -122,9 +124,7 @@ class TestValidateURLSafety:
         """Test URL resolving to private IP is blocked."""
         with patch("socket.getaddrinfo") as mock_getaddrinfo:
             # Mock DNS resolution to private IP
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("10.0.0.1", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("10.0.0.1", 80))]
 
             with pytest.raises(InvalidURLError, match="private IP"):
                 validate_url_safety("https://internal.example.com")
@@ -132,9 +132,7 @@ class TestValidateURLSafety:
     def test_validate_url_safety_127_0_0_1(self):
         """Test direct 127.0.0.1 IP is blocked."""
         with patch("socket.getaddrinfo") as mock_getaddrinfo:
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("127.0.0.1", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("127.0.0.1", 80))]
 
             with pytest.raises(InvalidURLError, match="private IP"):
                 validate_url_safety("http://127.0.0.1")
@@ -153,6 +151,7 @@ class TestValidateURLSafety:
         """Test DNS resolution failure is caught."""
         with patch("socket.getaddrinfo") as mock_getaddrinfo:
             import socket
+
             mock_getaddrinfo.side_effect = socket.gaierror("DNS lookup failed")
 
             with pytest.raises(InvalidURLError, match="Failed to resolve"):
@@ -164,13 +163,12 @@ class TestFetchHeaders:
 
     def test_fetch_headers_success(self):
         """Test successful header fetch."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
             # Mock DNS to public IP
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             # Mock successful response
             mock_response = Mock()
@@ -194,12 +192,11 @@ class TestFetchHeaders:
 
     def test_fetch_headers_normalizes_to_lowercase(self):
         """Test header names are normalized to lowercase."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_response = Mock()
             mock_response.status_code = 200
@@ -220,12 +217,11 @@ class TestFetchHeaders:
 
     def test_fetch_headers_timeout(self):
         """Test timeout raises NetworkError."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_session = Mock()
             mock_session.head.side_effect = requests.exceptions.Timeout("Timeout")
@@ -236,12 +232,11 @@ class TestFetchHeaders:
 
     def test_fetch_headers_connection_error(self):
         """Test connection error raises NetworkError."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_session = Mock()
             mock_session.head.side_effect = requests.exceptions.ConnectionError("Connection failed")
@@ -252,12 +247,11 @@ class TestFetchHeaders:
 
     def test_fetch_headers_ssl_error(self):
         """Test SSL error raises NetworkError."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_session = Mock()
             mock_session.head.side_effect = requests.exceptions.SSLError("SSL error")
@@ -268,12 +262,11 @@ class TestFetchHeaders:
 
     def test_fetch_headers_http_404(self):
         """Test HTTP 404 raises HTTPError with headers."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_response = Mock()
             mock_response.status_code = 404
@@ -296,12 +289,11 @@ class TestFetchHeaders:
 
     def test_fetch_headers_http_500(self):
         """Test HTTP 500 raises HTTPError."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_response = Mock()
             mock_response.status_code = 500
@@ -318,12 +310,11 @@ class TestFetchHeaders:
 
     def test_fetch_headers_custom_timeout(self):
         """Test custom timeout is passed to request."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_response = Mock()
             mock_response.status_code = 200
@@ -342,12 +333,11 @@ class TestFetchHeaders:
 
     def test_fetch_headers_custom_user_agent(self):
         """Test custom user agent is used."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_response = Mock()
             mock_response.status_code = 200
@@ -365,12 +355,11 @@ class TestFetchHeaders:
 
     def test_fetch_headers_no_redirects(self):
         """Test disabling redirects."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_response = Mock()
             mock_response.status_code = 200
@@ -388,12 +377,11 @@ class TestFetchHeaders:
 
     def test_fetch_headers_max_redirects(self):
         """Test max_redirects is set on session."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_response = Mock()
             mock_response.status_code = 200
@@ -414,12 +402,11 @@ class TestFetchHeadersSafe:
 
     def test_fetch_headers_safe_success(self):
         """Test successful fetch returns headers and no error."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_response = Mock()
             mock_response.status_code = 200
@@ -436,12 +423,11 @@ class TestFetchHeadersSafe:
 
     def test_fetch_headers_safe_network_error(self):
         """Test network error returns empty headers and error."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_session = Mock()
             mock_session.head.side_effect = requests.exceptions.Timeout("Timeout")
@@ -454,12 +440,11 @@ class TestFetchHeadersSafe:
 
     def test_fetch_headers_safe_http_error_with_headers(self):
         """Test HTTP error returns headers and error."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_response = Mock()
             mock_response.status_code = 404
@@ -488,12 +473,11 @@ class TestGetFinalURL:
 
     def test_get_final_url_no_redirect(self):
         """Test URL with no redirects."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_response = Mock()
             mock_response.url = "https://example.com"
@@ -508,12 +492,11 @@ class TestGetFinalURL:
 
     def test_get_final_url_with_redirect(self):
         """Test URL with redirect."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_response = Mock()
             mock_response.url = "https://www.example.com"  # Redirected
@@ -528,12 +511,11 @@ class TestGetFinalURL:
 
     def test_get_final_url_network_error(self):
         """Test network error raises NetworkError."""
-        with patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class:
+        with patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_session = Mock()
             mock_session.head.side_effect = requests.exceptions.ConnectionError("Failed")

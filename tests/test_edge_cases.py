@@ -11,24 +11,23 @@ This module tests edge cases including:
 
 import pytest
 
-from sha.config import (
-    STATUS_GOOD,
-    STATUS_ACCEPTABLE,
-    STATUS_BAD,
-    STATUS_MISSING,
-)
 from sha.analyzer import (
-    analyze_hsts,
-    analyze_xframe,
     analyze_content_type_options,
     analyze_csp,
+    analyze_hsts,
     analyze_referrer_policy,
+    analyze_xframe,
 )
-from sha.analyzers.permissions_policy import analyze as analyze_permissions_policy
 from sha.analyzers.coep import analyze as analyze_coep
 from sha.analyzers.coop import analyze as analyze_coop
 from sha.analyzers.corp import analyze as analyze_corp
-
+from sha.analyzers.permissions_policy import analyze as analyze_permissions_policy
+from sha.config import (
+    STATUS_ACCEPTABLE,
+    STATUS_BAD,
+    STATUS_GOOD,
+    STATUS_MISSING,
+)
 
 # ============================================================================
 # Empty and Whitespace Value Tests

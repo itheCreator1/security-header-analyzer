@@ -10,7 +10,6 @@ from typing import Any, Dict, Optional
 
 from ..config import STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
-
 HEADER_KEY = "x-download-options"
 
 CONFIG = {

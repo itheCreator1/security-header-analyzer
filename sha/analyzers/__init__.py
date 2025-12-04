@@ -5,22 +5,23 @@ This module provides a registry of all available header analyzers
 and exports them for use by the main analyzer module.
 """
 
-from typing import Dict, Callable, Any
+from typing import Any, Callable, Dict
 
 # Import all analyzer modules
-from . import hsts
-from . import xframe
-from . import content_type
-from . import csp
-from . import referrer_policy
-from . import permissions_policy
-from . import coep
-from . import coop
-from . import corp
-from . import x_xss_protection
-from . import x_download_options
-from . import x_permitted_cross_domain_policies
-
+from . import (
+    coep,
+    content_type,
+    coop,
+    corp,
+    csp,
+    hsts,
+    permissions_policy,
+    referrer_policy,
+    x_download_options,
+    x_permitted_cross_domain_policies,
+    x_xss_protection,
+    xframe,
+)
 
 # Registry mapping header keys to analyzer functions
 ANALYZER_REGISTRY: Dict[str, Callable] = {

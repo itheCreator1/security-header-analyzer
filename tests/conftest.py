@@ -6,10 +6,11 @@ to reduce duplication and improve test maintainability.
 """
 
 import pytest
+
 from sha.config import (
-    STATUS_GOOD,
     STATUS_ACCEPTABLE,
     STATUS_BAD,
+    STATUS_GOOD,
     STATUS_MISSING,
 )
 

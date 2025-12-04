@@ -16,7 +16,6 @@ from sha.analyzers.x_permitted_cross_domain_policies import (
 from sha.analyzers.x_xss_protection import analyze as analyze_x_xss_protection
 from sha.config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
-
 # ============================================================================
 # X-XSS-Protection Tests
 # ============================================================================
@@ -264,12 +263,7 @@ class TestAnalyzeXPermittedCrossDomainPolicies:
         result2 = analyze_x_permitted_cross_domain_policies("MASTER-ONLY")
         result3 = analyze_x_permitted_cross_domain_policies("Master-Only")
 
-        assert (
-            result1["status"]
-            == result2["status"]
-            == result3["status"]
-            == STATUS_ACCEPTABLE
-        )
+        assert result1["status"] == result2["status"] == result3["status"] == STATUS_ACCEPTABLE
 
     def test_analyze_all(self):
         """Test analysis with all value (very insecure - high severity)."""

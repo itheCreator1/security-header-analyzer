@@ -5,10 +5,9 @@ This module provides the main analyze_headers function that coordinates
 analysis across all registered security header analyzers.
 """
 
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 from .analyzers import ANALYZER_REGISTRY, get_all_header_keys
-
 
 # Type alias for finding result
 Finding = Dict[str, Any]
@@ -54,22 +53,23 @@ def analyze_headers(headers: Dict[str, str]) -> List[Finding]:
     return findings
 
 
-# Export backward-compatible functions from individual analyzers
-# This allows existing test code to continue working
-from .analyzers.hsts import analyze as analyze_hsts, parse_hsts
-from .analyzers.xframe import analyze as analyze_xframe
 from .analyzers.content_type import analyze as analyze_content_type_options
+from .analyzers.csp import analyze as analyze_csp
 from .analyzers.csp import (
-    analyze as analyze_csp,
-    parse_csp,
     check_csp_dangerous_patterns,
     check_csp_restrictive_default,
     check_csp_security_directives,
     has_nonces_or_hashes,
     has_strict_dynamic,
+    parse_csp,
 )
-from .analyzers.referrer_policy import analyze as analyze_referrer_policy
 
+# Export backward-compatible functions from individual analyzers
+# This allows existing test code to continue working
+from .analyzers.hsts import analyze as analyze_hsts
+from .analyzers.hsts import parse_hsts
+from .analyzers.referrer_policy import analyze as analyze_referrer_policy
+from .analyzers.xframe import analyze as analyze_xframe
 
 __all__ = [
     "analyze_headers",

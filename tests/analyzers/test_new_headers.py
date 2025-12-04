@@ -10,20 +10,19 @@ This module contains tests for the four headers added in Phase 2:
 
 import pytest
 
-from sha.config import (
-    STATUS_GOOD,
-    STATUS_ACCEPTABLE,
-    STATUS_BAD,
-    STATUS_MISSING,
-)
-from sha.analyzers.permissions_policy import (
-    parse_permissions_policy,
-    analyze as analyze_permissions_policy,
-)
 from sha.analyzers.coep import analyze as analyze_coep
 from sha.analyzers.coop import analyze as analyze_coop
 from sha.analyzers.corp import analyze as analyze_corp
-
+from sha.analyzers.permissions_policy import analyze as analyze_permissions_policy
+from sha.analyzers.permissions_policy import (
+    parse_permissions_policy,
+)
+from sha.config import (
+    STATUS_ACCEPTABLE,
+    STATUS_BAD,
+    STATUS_GOOD,
+    STATUS_MISSING,
+)
 
 # ============================================================================
 # Permissions-Policy Tests

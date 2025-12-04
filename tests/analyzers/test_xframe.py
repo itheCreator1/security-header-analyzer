@@ -6,8 +6,9 @@ DENY, SAMEORIGIN, and deprecated ALLOW-FROM directives.
 """
 
 import pytest
+
 from sha.analyzer import analyze_xframe
-from sha.config import STATUS_GOOD, STATUS_ACCEPTABLE, STATUS_BAD, STATUS_MISSING
+from sha.config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
 
 class TestAnalyzeXFrame:

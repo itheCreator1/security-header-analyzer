@@ -7,13 +7,14 @@ header fetching, analysis, and reporting.
 
 import json
 import sys
-import pytest
-from unittest.mock import Mock, patch
 from io import StringIO
+from unittest.mock import Mock, patch
+
+import pytest
 import requests
 
-from sha.main import parse_args, main
 from sha import __version__
+from sha.main import main, parse_args
 
 
 class TestParseArgs:
@@ -90,15 +91,12 @@ class TestMainFunction:
         """Test successful analysis with all good headers."""
         test_args = ["sha", "https://example.com"]
 
-        with patch("sys.argv", test_args), \
-             patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class, \
-             patch("sys.exit") as mock_exit:
+        with patch("sys.argv", test_args), patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class, patch("sys.exit") as mock_exit:
 
             # Mock DNS to public IP
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             # Mock successful response with good headers
             mock_response = Mock()
@@ -130,14 +128,11 @@ class TestMainFunction:
         """Test analysis with missing headers."""
         test_args = ["sha", "https://example.com"]
 
-        with patch("sys.argv", test_args), \
-             patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class, \
-             patch("sys.exit") as mock_exit:
+        with patch("sys.argv", test_args), patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class, patch("sys.exit") as mock_exit:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             # Mock response with no security headers
             mock_response = Mock()
@@ -154,22 +149,23 @@ class TestMainFunction:
 
             captured = capsys.readouterr()
             assert "Critical Issues: 2" in captured.out  # HSTS and CSP
-            assert "High Issues:     3" in captured.out  # X-Frame-Options, Referrer-Policy, Permissions-Policy
-            assert "Medium Issues:   5" in captured.out  # X-Content-Type-Options, COEP, COOP, CORP, X-Permitted-Cross-Domain-Policies
+            assert (
+                "High Issues:     3" in captured.out
+            )  # X-Frame-Options, Referrer-Policy, Permissions-Policy
+            assert (
+                "Medium Issues:   5" in captured.out
+            )  # X-Content-Type-Options, COEP, COOP, CORP, X-Permitted-Cross-Domain-Policies
             assert "Low Issues:      2" in captured.out  # X-XSS-Protection, X-Download-Options
 
     def test_main_json_output(self, capsys):
         """Test JSON output format."""
         test_args = ["sha", "https://example.com", "--json"]
 
-        with patch("sys.argv", test_args), \
-             patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class, \
-             patch("sys.exit") as mock_exit:
+        with patch("sys.argv", test_args), patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class, patch("sys.exit") as mock_exit:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_response = Mock()
             mock_response.status_code = 200
@@ -197,14 +193,11 @@ class TestMainFunction:
         """Test network error exits with code 1."""
         test_args = ["sha", "https://example.com"]
 
-        with patch("sys.argv", test_args), \
-             patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class, \
-             patch("sys.exit") as mock_exit:
+        with patch("sys.argv", test_args), patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class, patch("sys.exit") as mock_exit:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_session = Mock()
             mock_session.head.side_effect = requests.exceptions.Timeout("Timeout")
@@ -222,8 +215,7 @@ class TestMainFunction:
         """Test invalid URL exits with code 2."""
         test_args = ["sha", "http://localhost"]
 
-        with patch("sys.argv", test_args), \
-             patch("sys.exit") as mock_exit:
+        with patch("sys.argv", test_args), patch("sys.exit") as mock_exit:
 
             main()
 
@@ -237,14 +229,11 @@ class TestMainFunction:
         """Test HTTP error exits with code 3."""
         test_args = ["sha", "https://example.com"]
 
-        with patch("sys.argv", test_args), \
-             patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class, \
-             patch("sys.exit") as mock_exit:
+        with patch("sys.argv", test_args), patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class, patch("sys.exit") as mock_exit:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             # Mock 404 response
             mock_response = Mock()
@@ -271,17 +260,16 @@ class TestMainFunction:
         """Test HTTP error without headers in exception."""
         test_args = ["sha", "https://example.com"]
 
-        with patch("sys.argv", test_args), \
-             patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class, \
-             patch("sys.exit") as mock_exit:
+        with patch("sys.argv", test_args), patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class, patch("sys.exit") as mock_exit:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_session = Mock()
-            mock_session.head.side_effect = requests.exceptions.ConnectionError("Connection refused")
+            mock_session.head.side_effect = requests.exceptions.ConnectionError(
+                "Connection refused"
+            )
             mock_session_class.return_value = mock_session
 
             main()
@@ -292,14 +280,11 @@ class TestMainFunction:
         """Test Ctrl+C handling."""
         test_args = ["sha", "https://example.com"]
 
-        with patch("sys.argv", test_args), \
-             patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class, \
-             patch("sys.exit") as mock_exit:
+        with patch("sys.argv", test_args), patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class, patch("sys.exit") as mock_exit:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_session = Mock()
             mock_session.head.side_effect = KeyboardInterrupt()
@@ -317,14 +302,11 @@ class TestMainFunction:
         """Test URL without protocol is normalized for fetching."""
         test_args = ["sha", "example.com"]
 
-        with patch("sys.argv", test_args), \
-             patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class, \
-             patch("sys.exit") as mock_exit:
+        with patch("sys.argv", test_args), patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class, patch("sys.exit") as mock_exit:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_response = Mock()
             mock_response.status_code = 200
@@ -350,14 +332,11 @@ class TestMainFunction:
         """Test custom timeout is passed through."""
         test_args = ["sha", "https://example.com", "--timeout", "30"]
 
-        with patch("sys.argv", test_args), \
-             patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class, \
-             patch("sys.exit") as mock_exit:
+        with patch("sys.argv", test_args), patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class, patch("sys.exit") as mock_exit:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_response = Mock()
             mock_response.status_code = 200
@@ -379,14 +358,11 @@ class TestMainFunction:
         """Test custom user agent is passed through."""
         test_args = ["sha", "https://example.com", "--user-agent", "TestBot/1.0"]
 
-        with patch("sys.argv", test_args), \
-             patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class, \
-             patch("sys.exit") as mock_exit:
+        with patch("sys.argv", test_args), patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class, patch("sys.exit") as mock_exit:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_response = Mock()
             mock_response.status_code = 200
@@ -408,14 +384,11 @@ class TestMainFunction:
         """Test --no-redirects flag is respected."""
         test_args = ["sha", "https://example.com", "--no-redirects"]
 
-        with patch("sys.argv", test_args), \
-             patch("socket.getaddrinfo") as mock_getaddrinfo, \
-             patch("requests.Session") as mock_session_class, \
-             patch("sys.exit") as mock_exit:
+        with patch("sys.argv", test_args), patch("socket.getaddrinfo") as mock_getaddrinfo, patch(
+            "requests.Session"
+        ) as mock_session_class, patch("sys.exit") as mock_exit:
 
-            mock_getaddrinfo.return_value = [
-                (None, None, None, None, ("93.184.216.34", 80))
-            ]
+            mock_getaddrinfo.return_value = [(None, None, None, None, ("93.184.216.34", 80))]
 
             mock_response = Mock()
             mock_response.status_code = 200

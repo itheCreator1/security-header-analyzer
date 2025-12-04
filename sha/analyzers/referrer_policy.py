@@ -5,10 +5,9 @@ This module contains configuration and analysis logic for the
 Referrer-Policy header which controls referrer information leakage.
 """
 
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
-from ..config import STATUS_GOOD, STATUS_ACCEPTABLE, STATUS_BAD, STATUS_MISSING
-
+from ..config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
 HEADER_KEY = "referrer-policy"
 
@@ -20,7 +19,12 @@ CONFIG = {
         # Best practice values (strongest privacy protection)
         "best_values": ["strict-origin", "no-referrer"],
         # Acceptable values (good balance of privacy and functionality)
-        "acceptable_values": ["strict-origin-when-cross-origin", "same-origin", "origin", "origin-when-cross-origin"],
+        "acceptable_values": [
+            "strict-origin-when-cross-origin",
+            "same-origin",
+            "origin",
+            "origin-when-cross-origin",
+        ],
         # Bad/unsafe values (leak too much information)
         "bad_values": ["unsafe-url", "no-referrer-when-downgrade"],
     },

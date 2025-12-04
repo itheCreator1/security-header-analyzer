@@ -6,8 +6,9 @@ and returns a list of findings.
 """
 
 import pytest
+
 from sha.analyzer import analyze_headers
-from sha.config import STATUS_GOOD, STATUS_ACCEPTABLE, STATUS_BAD, STATUS_MISSING
+from sha.config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
 
 class TestAnalyzeHeaders:
@@ -66,7 +67,9 @@ class TestAnalyzeHeaders:
         # Find specific findings
         hsts_finding = next(f for f in findings if f["header_name"] == "Strict-Transport-Security")
         xframe_finding = next(f for f in findings if f["header_name"] == "X-Frame-Options")
-        content_type_finding = next(f for f in findings if f["header_name"] == "X-Content-Type-Options")
+        content_type_finding = next(
+            f for f in findings if f["header_name"] == "X-Content-Type-Options"
+        )
         csp_finding = next(f for f in findings if f["header_name"] == "Content-Security-Policy")
 
         assert hsts_finding["status"] == STATUS_BAD

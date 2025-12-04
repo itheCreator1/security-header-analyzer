@@ -5,7 +5,7 @@ This module defines shared constants and exceptions used throughout the applicat
 Individual header configurations have been moved to their respective analyzer modules.
 """
 
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 # Version information (imported from __init__.py at runtime)
 VERSION = "1.0.0"
@@ -13,18 +13,20 @@ VERSION = "1.0.0"
 # HTTP Request Configuration
 DEFAULT_TIMEOUT = 10  # seconds
 DEFAULT_MAX_REDIRECTS = 5
-DEFAULT_USER_AGENT = f"SecurityHeaderAnalyzer/{VERSION} (https://github.com/ThodorhsPerros/security-header-analyzer)"
+DEFAULT_USER_AGENT = (
+    f"SecurityHeaderAnalyzer/{VERSION} (https://github.com/ThodorhsPerros/security-header-analyzer)"
+)
 
 # Private IP ranges for SSRF protection
 PRIVATE_IP_RANGES = [
-    "127.0.0.0/8",      # Loopback
-    "10.0.0.0/8",       # Private network
-    "172.16.0.0/12",    # Private network
-    "192.168.0.0/16",   # Private network
-    "169.254.0.0/16",   # Link-local
-    "::1/128",          # IPv6 loopback
-    "fc00::/7",         # IPv6 private
-    "fe80::/10",        # IPv6 link-local
+    "127.0.0.0/8",  # Loopback
+    "10.0.0.0/8",  # Private network
+    "172.16.0.0/12",  # Private network
+    "192.168.0.0/16",  # Private network
+    "169.254.0.0/16",  # Link-local
+    "::1/128",  # IPv6 loopback
+    "fc00::/7",  # IPv6 private
+    "fe80::/10",  # IPv6 link-local
 ]
 
 LOCALHOST_NAMES = ["localhost", "0.0.0.0"]
@@ -41,8 +43,10 @@ STATUS_MISSING = "missing"
 
 # Custom Exception Classes
 
+
 class SecurityHeaderAnalyzerError(Exception):
     """Base exception for all Security Header Analyzer errors."""
+
     pass
 
 
@@ -57,6 +61,7 @@ class NetworkError(SecurityHeaderAnalyzerError):
     - Too many redirects
     - SSL/TLS errors
     """
+
     pass
 
 
@@ -69,6 +74,7 @@ class InvalidURLError(SecurityHeaderAnalyzerError):
     - Missing or invalid components
     - URLs targeting private IP addresses (SSRF protection)
     """
+
     pass
 
 
@@ -102,6 +108,7 @@ class HTTPError(SecurityHeaderAnalyzerError):
 # Utility functions for backward compatibility with old config structure
 # These now delegate to the analyzer registry
 
+
 def get_header_config(header_name: str) -> Dict[str, Any]:
     """
     Get configuration for a specific header.
@@ -116,6 +123,7 @@ def get_header_config(header_name: str) -> Dict[str, Any]:
         KeyError: If header name is not found in configuration
     """
     from .analyzers import get_config
+
     return get_config(header_name.lower())
 
 
@@ -127,6 +135,7 @@ def get_all_header_names() -> List[str]:
         List of header names
     """
     from .analyzers import get_all_header_keys
+
     return get_all_header_keys()
 
 
@@ -168,5 +177,6 @@ def is_valid_severity(severity: str) -> bool:
 def __getattr__(name):
     if name == "SECURITY_HEADERS":
         from .analyzers import CONFIG_REGISTRY
+
         return CONFIG_REGISTRY
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

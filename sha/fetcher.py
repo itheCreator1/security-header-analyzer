@@ -5,21 +5,22 @@ This module handles fetching HTTP headers from URLs with proper error handling
 and security protections (SSRF prevention).
 """
 
-import socket
 import ipaddress
+import socket
 from typing import Dict, Optional, Tuple
 from urllib.parse import urlparse
+
 import requests
 
 from .config import (
-    DEFAULT_TIMEOUT,
     DEFAULT_MAX_REDIRECTS,
+    DEFAULT_TIMEOUT,
     DEFAULT_USER_AGENT,
-    PRIVATE_IP_RANGES,
     LOCALHOST_NAMES,
-    NetworkError,
-    InvalidURLError,
+    PRIVATE_IP_RANGES,
     HTTPError,
+    InvalidURLError,
+    NetworkError,
 )
 
 
@@ -106,7 +107,9 @@ def validate_url_safety(url: str) -> None:
 
         # Validate scheme
         if parsed.scheme not in ("http", "https"):
-            raise InvalidURLError(f"Invalid URL scheme: {parsed.scheme}. Only http and https are supported.")
+            raise InvalidURLError(
+                f"Invalid URL scheme: {parsed.scheme}. Only http and https are supported."
+            )
 
         # Validate hostname exists
         if not parsed.hostname:
@@ -251,7 +254,12 @@ def fetch_headers(
         )
 
         # DNS Rebinding Protection: Validate final URL after redirects
-        if follow_redirects and hasattr(response, 'url') and isinstance(response.url, str) and response.url != url:
+        if (
+            follow_redirects
+            and hasattr(response, "url")
+            and isinstance(response.url, str)
+            and response.url != url
+        ):
             validate_redirect_destination(response.url)
 
         # Check for HTTP errors
@@ -273,9 +281,7 @@ def fetch_headers(
         raise NetworkError(f"Request timed out after {timeout} seconds: {url}") from e
 
     except requests.exceptions.TooManyRedirects as e:
-        raise NetworkError(
-            f"Too many redirects (max: {max_redirects}) while fetching {url}"
-        ) from e
+        raise NetworkError(f"Too many redirects (max: {max_redirects}) while fetching {url}") from e
 
     except requests.exceptions.SSLError as e:
         raise NetworkError(f"SSL/TLS error for {url}: {e}") from e
@@ -334,6 +340,7 @@ def fetch_headers_safe(
 
 
 # Utility functions for testing and debugging
+
 
 def get_final_url(
     url: str,

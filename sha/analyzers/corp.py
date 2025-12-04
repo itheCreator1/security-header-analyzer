@@ -6,10 +6,9 @@ Cross-Origin-Resource-Policy header which controls how resources
 can be loaded by other origins.
 """
 
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
-from ..config import STATUS_GOOD, STATUS_ACCEPTABLE, STATUS_BAD, STATUS_MISSING
-
+from ..config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
 HEADER_KEY = "cross-origin-resource-policy"
 

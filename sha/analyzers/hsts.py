@@ -6,10 +6,9 @@ Strict-Transport-Security header which enforces HTTPS connections.
 """
 
 import re
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
-from ..config import STATUS_GOOD, STATUS_ACCEPTABLE, STATUS_BAD, STATUS_MISSING
-
+from ..config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
 HEADER_KEY = "strict-transport-security"
 
@@ -66,7 +65,7 @@ def parse_hsts(value: str) -> Dict[str, Any]:
     }
 
     # Parse max-age
-    max_age_match = re.search(r'max-age=(\d+)', value, re.IGNORECASE)
+    max_age_match = re.search(r"max-age=(\d+)", value, re.IGNORECASE)
     if max_age_match:
         result["max_age"] = int(max_age_match.group(1))
 

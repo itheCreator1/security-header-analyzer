@@ -6,8 +6,9 @@ which should be set to 'nosniff' for security.
 """
 
 import pytest
+
 from sha.analyzer import analyze_content_type_options
-from sha.config import STATUS_GOOD, STATUS_BAD, STATUS_MISSING
+from sha.config import STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
 
 class TestAnalyzeContentTypeOptions:

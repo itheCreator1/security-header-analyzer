@@ -11,7 +11,6 @@ from typing import Any, Dict, Optional
 
 from ..config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
-
 HEADER_KEY = "x-xss-protection"
 
 CONFIG = {
@@ -127,8 +126,7 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
         "header_name": header_name,
         "status": STATUS_BAD,
         "severity": CONFIG["severity_missing"],
-        "message": f"{CONFIG['messages'][STATUS_BAD]} - "
-        f"unknown value '{value}'",
+        "message": f"{CONFIG['messages'][STATUS_BAD]} - " f"unknown value '{value}'",
         "actual_value": value,
         "recommendation": CONFIG["recommendations"]["bad_value"],
     }

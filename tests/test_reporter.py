@@ -5,18 +5,20 @@ Tests report generation, formatting, and summary calculation.
 """
 
 import json
-import pytest
 from datetime import datetime
+
+import pytest
+
 from sha.reporter import (
-    generate_report,
-    format_text_report,
-    format_json_report,
     calculate_summary,
-    sort_findings_by_severity,
+    format_json_report,
+    format_summary_oneline,
+    format_text_report,
+    generate_report,
     get_severity_label,
     get_timestamp,
     get_total_issues,
-    format_summary_oneline,
+    sort_findings_by_severity,
 )
 
 

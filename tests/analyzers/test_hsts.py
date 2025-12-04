@@ -6,8 +6,9 @@ max-age validation, includeSubDomains, and preload directives.
 """
 
 import pytest
+
 from sha.analyzer import analyze_hsts, parse_hsts
-from sha.config import STATUS_GOOD, STATUS_ACCEPTABLE, STATUS_BAD, STATUS_MISSING
+from sha.config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
 
 class TestParseHSTS:

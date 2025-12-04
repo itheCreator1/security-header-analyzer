@@ -6,10 +6,9 @@ Permissions-Policy header (formerly Feature-Policy) which controls
 browser features and APIs.
 """
 
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
-from ..config import STATUS_GOOD, STATUS_ACCEPTABLE, STATUS_BAD, STATUS_MISSING
-
+from ..config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
 HEADER_KEY = "permissions-policy"
 
@@ -65,14 +64,14 @@ def parse_permissions_policy(value: str) -> Dict[str, str]:
     features = {}
 
     # Split by comma to get individual feature directives
-    for directive_str in value.split(','):
+    for directive_str in value.split(","):
         directive_str = directive_str.strip()
         if not directive_str:
             continue
 
         # Split into feature name and allowlist
-        if '=' in directive_str:
-            parts = directive_str.split('=', 1)
+        if "=" in directive_str:
+            parts = directive_str.split("=", 1)
             feature_name = parts[0].strip().lower()
             allowlist = parts[1].strip() if len(parts) > 1 else ""
             features[feature_name] = allowlist

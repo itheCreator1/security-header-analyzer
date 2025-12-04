@@ -5,20 +5,20 @@ This module provides the command-line interface and orchestrates
 the fetching, analysis, and reporting of security headers.
 """
 
-import sys
 import argparse
+import sys
 from typing import NoReturn
 
 from . import __version__
+from .analyzer import analyze_headers
 from .config import (
-    DEFAULT_TIMEOUT,
     DEFAULT_MAX_REDIRECTS,
-    NetworkError,
-    InvalidURLError,
+    DEFAULT_TIMEOUT,
     HTTPError,
+    InvalidURLError,
+    NetworkError,
 )
 from .fetcher import fetch_headers
-from .analyzer import analyze_headers
 from .reporter import generate_report
 
 
@@ -205,6 +205,7 @@ def main() -> NoReturn:
         if args.debug:
             # Show traceback in debug mode
             import traceback
+
             traceback.print_exc()
         sys.exit(1)
 
