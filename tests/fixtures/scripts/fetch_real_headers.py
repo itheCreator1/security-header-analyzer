@@ -17,6 +17,7 @@ import json
 import sys
 from datetime import date
 from pathlib import Path
+from typing import Dict, Optional
 
 import requests
 
@@ -34,7 +35,7 @@ SCRIPT_DIR = Path(__file__).parent
 FIXTURES_DIR = SCRIPT_DIR.parent / "headers"
 
 
-def fetch_headers(domain: str, timeout: int = 10) -> dict | None:
+def fetch_headers(domain: str, timeout: int = 10) -> Optional[Dict]:
     """Fetch headers from a domain.
 
     Args:
@@ -109,9 +110,7 @@ def main():
         action="store_true",
         help=f"Fetch headers from all predefined sites: {', '.join(PREDEFINED_SITES)}",
     )
-    parser.add_argument(
-        "--list", action="store_true", help="List predefined sites and exit"
-    )
+    parser.add_argument("--list", action="store_true", help="List predefined sites and exit")
     parser.add_argument(
         "--timeout",
         type=int,

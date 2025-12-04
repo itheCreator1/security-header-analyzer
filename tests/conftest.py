@@ -76,13 +76,143 @@ def all_headers_good():
     }
 
 
+# ============================================================================
+# Real-World Header Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def github_headers():
+    """Real headers from github.com."""
+    from tests.fixtures.headers import load_headers_fixture
+
+    return load_headers_fixture("github_com")["headers"]
+
+
+@pytest.fixture
+def google_headers():
+    """Real headers from google.com."""
+    from tests.fixtures.headers import load_headers_fixture
+
+    return load_headers_fixture("google_com")["headers"]
+
+
+@pytest.fixture
+def cloudflare_headers():
+    """Real headers from cloudflare.com."""
+    from tests.fixtures.headers import load_headers_fixture
+
+    return load_headers_fixture("cloudflare_com")["headers"]
+
+
+@pytest.fixture
+def mozilla_headers():
+    """Real headers from mozilla.org."""
+    from tests.fixtures.headers import load_headers_fixture
+
+    return load_headers_fixture("mozilla_org")["headers"]
+
+
+@pytest.fixture
+def aws_headers():
+    """Real headers from aws.amazon.com."""
+    from tests.fixtures.headers import load_headers_fixture
+
+    return load_headers_fixture("aws_amazon_com")["headers"]
+
+
+@pytest.fixture
+def weak_headers():
+    """Headers from a site with weak security posture."""
+    from tests.fixtures.headers import load_headers_fixture
+
+    return load_headers_fixture("weak_site")["headers"]
+
+
+@pytest.fixture
+def missing_critical_headers():
+    """Headers from a site missing only critical headers (HSTS, CSP)."""
+    from tests.fixtures.headers import load_headers_fixture
+
+    return load_headers_fixture("missing_critical")["headers"]
+
+
+@pytest.fixture
+def all_real_world_fixtures():
+    """All available real-world header fixtures."""
+    from tests.fixtures.headers import get_all_fixtures
+
+    return get_all_fixtures()
+
+
+# ============================================================================
+# Mock Helper Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def mock_response_factory():
+    """Factory for creating mock HTTP responses.
+
+    Usage:
+        def test_something(mock_response_factory):
+            response = mock_response_factory(
+                status_code=200,
+                headers={'x-frame-options': 'DENY'}
+            )
+    """
+    from unittest.mock import Mock
+
+    def _create(status_code=200, headers=None, url="https://example.com"):
+        response = Mock()
+        response.status_code = status_code
+        response.headers = headers or {}
+        response.url = url
+        return response
+
+    return _create
+
+
+@pytest.fixture
+def mock_session_factory(mock_response_factory):
+    """Factory for creating mocked requests.Session objects.
+
+    Usage:
+        def test_something(mock_session_factory):
+            response = mock_response_factory(headers={...})
+            session = mock_session_factory(response)
+    """
+    from unittest.mock import Mock
+
+    def _create(response=None):
+        session = Mock()
+        session.head.return_value = response or mock_response_factory()
+        return session
+
+    return _create
+
+
 # Export commonly used constants for convenience
 __all__ = [
+    # Basic fixtures
     "sample_finding_good",
     "sample_finding_bad",
     "sample_finding_missing",
     "all_headers_missing",
     "all_headers_good",
+    # Real-world fixtures
+    "github_headers",
+    "google_headers",
+    "cloudflare_headers",
+    "mozilla_headers",
+    "aws_headers",
+    "weak_headers",
+    "missing_critical_headers",
+    "all_real_world_fixtures",
+    # Mock factories
+    "mock_response_factory",
+    "mock_session_factory",
+    # Constants
     "STATUS_GOOD",
     "STATUS_ACCEPTABLE",
     "STATUS_BAD",
