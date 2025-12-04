@@ -1,0 +1,21 @@
+{
+  "site": "google.com",
+  "url": "https://www.google.com/",
+  "captured_date": "2025-12-04",
+  "status_code": 200,
+  "headers": {
+    "content-type": "text/html; charset=ISO-8859-1",
+    "content-security-policy-report-only": "object-src 'none';base-uri 'self';script-src 'nonce-nQlBFFfQdGIBrgSKbgdRCg' 'strict-dynamic' 'report-sample' 'unsafe-eval' 'unsafe-inline' https: http:;report-uri https://csp.withgoogle.com/csp/gws/other-hp",
+    "accept-ch": "Sec-CH-Prefers-Color-Scheme",
+    "p3p": "CP=\"This is not a P3P policy! See g.co/p3phelp for more info.\"",
+    "date": "Thu, 04 Dec 2025 12:51:18 GMT",
+    "server": "gws",
+    "x-xss-protection": "0",
+    "x-frame-options": "SAMEORIGIN",
+    "expires": "Thu, 04 Dec 2025 12:51:18 GMT",
+    "cache-control": "private",
+    "set-cookie": "AEC=AaJma5vKEHyvFQZKOBXV8G7HtyKZc85GCGhJcx84PFmvW_xBYhpfWBkzaw; expires=Tue, 02-Jun-2026 12:51:18 GMT; path=/; domain=.google.com; Secure; HttpOnly; SameSite=lax, __Secure-ENID=29.SE=FlVWqKyQW-YGk_7dHYoNXibbMp_dCe_UIC78I_2YHW5uqkwWvksbVY0rlVRFJmM80zc_r3MY-tN8P0QWjDGj8A_CY8s8nmd5K0lMeRnS9aJOmsOQs7LkRc1VqsthnQj7KviSJivFaOh4uTe-atFUKYsb9dGeh243OFv8r9FHCcd-1TCXQrL621K6LAEGUPTBVYw_xQPVjATtFULl_TKecrtfpii5F16qpaw9U8m5U9qKArj07AYRW2S84m4WxfQq4e4; expires=Mon, 04-Jan-2027 05:09:36 GMT; path=/; domain=.google.com; Secure; HttpOnly; SameSite=lax",
+    "transfer-encoding": "chunked",
+    "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000"
+  }
+}

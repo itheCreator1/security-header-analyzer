@@ -1,0 +1,18 @@
+{
+  "site": "weak-example.test",
+  "url": "https://weak-example.test",
+  "captured_date": "2025-12-04",
+  "status_code": 200,
+  "headers": {
+    "date": "Wed, 04 Dec 2025 12:00:00 GMT",
+    "server": "Apache/2.4.41",
+    "content-type": "text/html; charset=UTF-8"
+  },
+  "expected_analysis": {
+    "critical_count": 2,
+    "high_count": 3,
+    "medium_count": 5,
+    "low_count": 2,
+    "notes": "Fictional site with minimal security headers - all security headers missing"
+  }
+}

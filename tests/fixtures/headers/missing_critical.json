@@ -1,0 +1,25 @@
+{
+  "site": "missing-critical.test",
+  "url": "https://missing-critical.test",
+  "captured_date": "2025-12-04",
+  "status_code": 200,
+  "headers": {
+    "date": "Wed, 04 Dec 2025 12:00:00 GMT",
+    "server": "nginx/1.21.0",
+    "content-type": "text/html; charset=UTF-8",
+    "x-frame-options": "DENY",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "permissions-policy": "camera=(), microphone=(), geolocation=()",
+    "x-xss-protection": "0",
+    "x-download-options": "noopen",
+    "x-permitted-cross-domain-policies": "none"
+  },
+  "expected_analysis": {
+    "critical_count": 2,
+    "high_count": 0,
+    "medium_count": 3,
+    "low_count": 0,
+    "notes": "Fictional site missing only HSTS and CSP (critical headers), but has all others configured properly"
+  }
+}

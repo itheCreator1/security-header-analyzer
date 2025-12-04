@@ -1,0 +1,25 @@
+{
+  "site": "aws.amazon.com",
+  "url": "https://aws.amazon.com/",
+  "captured_date": "2025-12-04",
+  "status_code": 200,
+  "headers": {
+    "content-type": "text/html;charset=utf-8",
+    "connection": "keep-alive",
+    "date": "Thu, 04 Dec 2025 12:51:21 GMT",
+    "x-content-type-options": "nosniff",
+    "server": "Server",
+    "x-frame-options": "SAMEORIGIN",
+    "x-xss-protection": "1; mode=block",
+    "strict-transport-security": "max-age=47304000; includeSubDomains",
+    "x-amz-id-1": "C4FE12BB3F574F8B8462",
+    "last-modified": "Thu, 04 Dec 2025 00:20:01 GMT",
+    "vary": "accept-encoding",
+    "content-encoding": "gzip",
+    "set-cookie": "aws-priv=eyJ2IjoxLCJldSI6MSwic3QiOjB9; Version=1; Comment=\"Anonymous cookie for privacy regulations\"; Domain=.aws.amazon.com; Max-Age=31536000; Expires=Fri, 04 Dec 2026 12:51:21 GMT; Path=/; Secure, aws_lang=en; Domain=.amazon.com; Path=/",
+    "x-cache": "Miss from cloudfront",
+    "via": "1.1 e94f9e25e5f6a259eae2965feb427218.cloudfront.net (CloudFront)",
+    "x-amz-cf-pop": "ATH51-P2",
+    "x-amz-cf-id": "TvH8owQ2vjkd1gGyOFPm3a14jjzmmIuyqizRkdhx_keHTh3dQysvKg=="
+  }
+}
