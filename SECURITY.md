@@ -19,7 +19,7 @@ We take the security of Security Header Analyzer seriously. If you believe you h
 
 Instead, please report them via one of the following methods:
 
-1. **Email**: Send details to [your-email@example.com] (replace with actual email)
+1. **Email**: Send details to [ThodorhsPerros@gmail.com]
 2. **GitHub Security Advisories**: Use the "Security" tab on our GitHub repository
 3. **Direct Message**: Contact the maintainers privately through GitHub
 
