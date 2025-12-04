@@ -225,7 +225,7 @@ class TestUtilityFunctions:
         names = get_all_header_names()
 
         assert isinstance(names, list)
-        assert len(names) == 9
+        assert len(names) == 12
         assert "strict-transport-security" in names
         assert "x-frame-options" in names
         assert "x-content-type-options" in names
@@ -235,6 +235,9 @@ class TestUtilityFunctions:
         assert "cross-origin-embedder-policy" in names
         assert "cross-origin-opener-policy" in names
         assert "cross-origin-resource-policy" in names
+        assert "x-xss-protection" in names
+        assert "x-download-options" in names
+        assert "x-permitted-cross-domain-policies" in names
 
     def test_get_severity_rank_valid(self):
         """Test getting severity rank for valid severities."""

@@ -155,7 +155,8 @@ class TestMainFunction:
             captured = capsys.readouterr()
             assert "Critical Issues: 2" in captured.out  # HSTS and CSP
             assert "High Issues:     3" in captured.out  # X-Frame-Options, Referrer-Policy, Permissions-Policy
-            assert "Medium Issues:   4" in captured.out  # X-Content-Type-Options, COEP, COOP, CORP
+            assert "Medium Issues:   5" in captured.out  # X-Content-Type-Options, COEP, COOP, CORP, X-Permitted-Cross-Domain-Policies
+            assert "Low Issues:      2" in captured.out  # X-XSS-Protection, X-Download-Options
 
     def test_main_json_output(self, capsys):
         """Test JSON output format."""
