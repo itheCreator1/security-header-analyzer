@@ -163,6 +163,92 @@ Without Referrer-Policy, clicking any external link would send this full URL (in
 
 ---
 
+## 6. X-XSS-Protection
+
+**Purpose:** Legacy header that controlled browser XSS filters in Internet Explorer, Chrome, and Safari. Now deprecated in modern browsers.
+
+**Best Practice:**
+```
+X-XSS-Protection: 0
+```
+Explicitly disables the XSS filter. This is the modern recommendation because these filters can introduce XSS vulnerabilities in otherwise safe websites.
+
+**Acceptable:**
+Not setting the header at all is acceptable for modern applications that implement a strong Content-Security-Policy.
+
+**Bad/Missing:**
+- `X-XSS-Protection: 1` (enables the filter without mode=block, can create vulnerabilities)
+- `X-XSS-Protection: 1; mode=block` (legacy approach, filter can introduce bugs)
+
+**Severity if Missing:** Low
+
+**Reasoning:** Modern browsers have removed XSS filter functionality, and Content-Security-Policy provides superior protection. However, explicitly setting `0` prevents older browsers from using potentially buggy XSS filters. OWASP recommends either not setting this header or explicitly disabling it with `0` to avoid filter-based vulnerabilities.
+
+**References:**
+- [OWASP: X-XSS-Protection](https://owasp.org/www-project-secure-headers/)
+- [MDN: X-XSS-Protection](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection)
+
+---
+
+## 7. X-Download-Options
+
+**Purpose:** Internet Explorer 8+ specific header that prevents the browser from executing downloaded HTML files in the context of the site. Prevents Same Origin Policy violations during file downloads.
+
+**Best Practice:**
+```
+X-Download-Options: noopen
+```
+Forces users to save the file before opening it, preventing execution in the site's security context.
+
+**Acceptable:**
+Same as best practice. This header has only one valid value: `noopen`.
+
+**Bad/Missing:**
+- Header not present when serving user-controllable HTML content with `Content-Disposition: attachment`
+- Any value other than `noopen`
+
+**Severity if Missing:** Low
+
+**Reasoning:** When a user directly opens a downloaded HTML file in IE, scripts in that file can access cookies from the originating domain. This violates the Same Origin Policy by allowing the downloaded file to execute as if it were part of the website. Setting this header forces the save-then-open workflow, ensuring downloaded files execute in a local context. While IE-specific and legacy, this header is still recommended when serving downloadable HTML content.
+
+**References:**
+- [OWASP: X-Download-Options](https://owasp.org/www-project-secure-headers/)
+- [Microsoft: X-Download-Options](https://docs.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/)
+
+---
+
+## 8. X-Permitted-Cross-Domain-Policies
+
+**Purpose:** Controls whether Adobe Flash Player, Adobe Acrobat, or PDF documents can load cross-domain policy files from the web server. Prevents untrusted Flash/PDF content from accessing site data.
+
+**Best Practice:**
+```
+X-Permitted-Cross-Domain-Policies: none
+```
+Completely prohibits Flash and PDF clients from loading any cross-domain policy files. Most secure option.
+
+**Acceptable:**
+```
+X-Permitted-Cross-Domain-Policies: master-only
+```
+Allows only the master policy file (`/crossdomain.xml`) to be loaded. Acceptable if you need to support legacy Flash/PDF content with controlled cross-domain access.
+
+**Bad/Missing:**
+- Header not present (allows policy files from any location)
+- `all`: Allows policy files from anywhere on the server (very insecure)
+- `by-content-type`: Allows policy files served with `Content-Type: text/x-cross-domain-policy` (too permissive)
+- `by-ftp-filename`: Allows policy files with specific FTP filenames (legacy, insecure)
+
+**Severity if Missing:** Medium
+
+**Reasoning:** While Adobe Flash is deprecated (EOL December 2020), this header remains relevant for security audits and defense-in-depth. Without proper configuration, attackers could place a malicious `crossdomain.xml` file on your server, allowing Flash/PDF content from other domains to read your application's data and bypass CSRF protections. Many security scanners still check for this header. Setting it to `none` is a simple, zero-cost protection.
+
+**References:**
+- [OWASP: X-Permitted-Cross-Domain-Policies](https://owasp.org/www-project-secure-headers/)
+- [Adobe: Cross-Domain Policy](https://www.adobe.com/devnet-docs/acrobatetk/tools/AppSec/xdomain.html)
+
+---
+
 ## Summary Table
 
 | Header | Severity if Missing | Ease of Implementation | Security Impact |
@@ -172,3 +258,6 @@ Without Referrer-Policy, clicking any external link would send this full URL (in
 | X-Content-Type-Options | Medium-High | Very Easy | High |
 | CSP | Critical | Hard | Very High |
 | Referrer-Policy | High | Very Easy | High |
+| X-XSS-Protection | Low | Very Easy | Low |
+| X-Download-Options | Low | Very Easy | Low |
+| X-Permitted-Cross-Domain-Policies | Medium | Very Easy | Medium |

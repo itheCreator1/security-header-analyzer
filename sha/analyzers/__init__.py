@@ -17,6 +17,9 @@ from . import permissions_policy
 from . import coep
 from . import coop
 from . import corp
+from . import x_xss_protection
+from . import x_download_options
+from . import x_permitted_cross_domain_policies
 
 
 # Registry mapping header keys to analyzer functions
@@ -30,6 +33,9 @@ ANALYZER_REGISTRY: Dict[str, Callable] = {
     coep.HEADER_KEY: coep.analyze,
     coop.HEADER_KEY: coop.analyze,
     corp.HEADER_KEY: corp.analyze,
+    x_xss_protection.HEADER_KEY: x_xss_protection.analyze,
+    x_download_options.HEADER_KEY: x_download_options.analyze,
+    x_permitted_cross_domain_policies.HEADER_KEY: x_permitted_cross_domain_policies.analyze,
 }
 
 # Registry mapping header keys to configurations
@@ -43,6 +49,9 @@ CONFIG_REGISTRY: Dict[str, Dict[str, Any]] = {
     coep.HEADER_KEY: coep.CONFIG,
     coop.HEADER_KEY: coop.CONFIG,
     corp.HEADER_KEY: corp.CONFIG,
+    x_xss_protection.HEADER_KEY: x_xss_protection.CONFIG,
+    x_download_options.HEADER_KEY: x_download_options.CONFIG,
+    x_permitted_cross_domain_policies.HEADER_KEY: x_permitted_cross_domain_policies.CONFIG,
 }
 
 
@@ -100,4 +109,7 @@ __all__ = [
     "coep",
     "coop",
     "corp",
+    "x_xss_protection",
+    "x_download_options",
+    "x_permitted_cross_domain_policies",
 ]
