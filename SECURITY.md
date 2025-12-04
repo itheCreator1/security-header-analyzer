@@ -182,7 +182,7 @@ The tool does not create or modify files by default. Output is to stdout unless 
 
 For security concerns, questions, or responsible disclosure:
 
-- **Security Email**: [your-email@example.com] (replace with actual email)
+- **Security Email**: [ThodorhsPerros@gmail.com] (ThodorhsPerros@gmail.com)
 - **GitHub**: [Create a private security advisory](https://github.com/ThodorhsPerros/security-header-analyzer/security/advisories/new)
 
 ## Acknowledgments
