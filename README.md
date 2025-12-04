@@ -6,7 +6,7 @@ A lightweight Python CLI tool that fetches and analyzes HTTP security headers ag
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/security-header-analyzer.git
+git clone https://github.com/ThodorhsPerros/security-header-analyzer.git
 cd security-header-analyzer
 
 # Create and activate virtual environment

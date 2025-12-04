@@ -13,7 +13,7 @@ VERSION = "1.0.0"
 # HTTP Request Configuration
 DEFAULT_TIMEOUT = 10  # seconds
 DEFAULT_MAX_REDIRECTS = 5
-DEFAULT_USER_AGENT = f"SecurityHeaderAnalyzer/{VERSION} (https://github.com/yourusername/security-header-analyzer)"
+DEFAULT_USER_AGENT = f"SecurityHeaderAnalyzer/{VERSION} (https://github.com/ThodorhsPerros/security-header-analyzer)"
 
 # Private IP ranges for SSRF protection
 PRIVATE_IP_RANGES = [

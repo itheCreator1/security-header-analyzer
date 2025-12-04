@@ -29,12 +29,12 @@ This project adheres to a code of conduct that all contributors are expected to 
 1. **Fork the repository** on GitHub
 2. **Clone your fork** locally:
    ```bash
-   git clone https://github.com/yourusername/security-header-analyzer.git
+   git clone https://github.com/your-username/security-header-analyzer.git
    cd security-header-analyzer
    ```
 3. **Add upstream remote**:
    ```bash
-   git remote add upstream https://github.com/original/security-header-analyzer.git
+   git remote add upstream https://github.com/ThodorhsPerros/security-header-analyzer.git
    ```
 
 ## Development Setup
