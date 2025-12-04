@@ -246,6 +246,115 @@ Cross-Origin-Resource-Policy: cross-origin
 
 ---
 
+### 10. X-XSS-Protection
+
+**Module:** `sha/analyzers/x_xss_protection.py`
+
+**Purpose:**
+Legacy header that controlled browser XSS filters in Internet Explorer, Chrome, and Safari. Now deprecated. Modern recommendation is to explicitly disable it or rely on Content-Security-Policy.
+
+**How It Works:**
+- Checks for value `0` (explicitly disabled - recommended)
+- Detects `1; mode=block` (legacy acceptable)
+- Flags `1` alone as bad (creates vulnerabilities)
+
+**Severity Levels:**
+- Missing: LOW
+- Value `0`: INFO (best)
+- Value `1; mode=block`: ACCEPTABLE (legacy)
+- Value `1`: BAD (medium severity)
+- Unknown values: BAD
+
+**Good Values:**
+```
+X-XSS-Protection: 0
+```
+
+**Acceptable Values:**
+```
+X-XSS-Protection: 1; mode=block
+```
+
+**Bad Values:**
+```
+X-XSS-Protection: 1
+```
+
+**References:**
+- [OWASP: X-XSS-Protection](https://owasp.org/www-project-secure-headers/)
+- [MDN: X-XSS-Protection](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection)
+
+---
+
+### 11. X-Download-Options
+
+**Module:** `sha/analyzers/x_download_options.py`
+
+**Purpose:**
+Internet Explorer 8+ specific header that prevents the browser from executing downloaded HTML files in the context of the site, preventing Same Origin Policy violations.
+
+**How It Works:**
+- Checks for `noopen` value
+- Any other value is flagged as bad
+
+**Severity Levels:**
+- Missing: LOW
+- Value `noopen`: INFO
+- Other values: BAD (low severity)
+
+**Good Values:**
+```
+X-Download-Options: noopen
+```
+
+**References:**
+- [OWASP: X-Download-Options](https://owasp.org/www-project-secure-headers/)
+
+---
+
+### 12. X-Permitted-Cross-Domain-Policies
+
+**Module:** `sha/analyzers/x_permitted_cross_domain_policies.py`
+
+**Purpose:**
+Controls whether Adobe Flash Player, Adobe Acrobat, or PDF documents can load cross-domain policy files from the web server. Prevents untrusted Flash/PDF content from accessing site data.
+
+**How It Works:**
+- Checks for `none` (best - completely prohibits policy files)
+- Detects `master-only` (acceptable - allows only /crossdomain.xml)
+- Flags permissive values: `all`, `by-content-type`, `by-ftp-filename`
+
+**Severity Levels:**
+- Missing: MEDIUM
+- Value `none`: INFO (best)
+- Value `master-only`: ACCEPTABLE (low severity)
+- Value `all`: BAD (high severity)
+- Values `by-content-type`, `by-ftp-filename`: BAD (medium severity)
+- Unknown values: BAD (medium severity)
+
+**Good Values:**
+```
+X-Permitted-Cross-Domain-Policies: none
+```
+
+**Acceptable Values:**
+```
+X-Permitted-Cross-Domain-Policies: master-only
+```
+
+**Bad Values:**
+```
+X-Permitted-Cross-Domain-Policies: all
+X-Permitted-Cross-Domain-Policies: by-content-type
+X-Permitted-Cross-Domain-Policies: by-ftp-filename
+```
+
+**References:**
+- [OWASP: X-Permitted-Cross-Domain-Policies](https://owasp.org/www-project-secure-headers/)
+- [Adobe: Cross-Domain Policy](https://www.adobe.com/devnet-docs/acrobatetk/tools/AppSec/xdomain.html)
+
+---
+
 ## Severity Level Guide
 
 - **CRITICAL**: Immediate security risk (currently unused)
