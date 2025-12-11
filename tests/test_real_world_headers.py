@@ -20,8 +20,8 @@ def test_github_headers_analysis(github_headers):
     """
     findings = analyze_headers(github_headers)
 
-    # Should analyze all 12 headers
-    assert len(findings) == 12, "Should analyze all headers"
+    # Should analyze all 15 headers (12 original + Set-Cookie + Cache-Control + Expect-CT)
+    assert len(findings) == 15, "Should analyze all headers"
 
     # GitHub should have excellent security
     critical_findings = [f for f in findings if f["severity"] == "critical"]
@@ -38,7 +38,7 @@ def test_google_headers_analysis(google_headers):
     """
     findings = analyze_headers(google_headers)
 
-    assert len(findings) == 12, "Should analyze all headers"
+    assert len(findings) == 15, "Should analyze all headers"
 
     # Verify no analysis errors occurred
     for finding in findings:
@@ -52,7 +52,7 @@ def test_cloudflare_headers_analysis(cloudflare_headers):
     """
     findings = analyze_headers(cloudflare_headers)
 
-    assert len(findings) == 12, "Should analyze all headers"
+    assert len(findings) == 15, "Should analyze all headers"
 
     # Verify findings have proper structure
     for finding in findings:
@@ -70,7 +70,7 @@ def test_mozilla_headers_analysis(mozilla_headers):
     """
     findings = analyze_headers(mozilla_headers)
 
-    assert len(findings) == 12, "Should analyze all headers"
+    assert len(findings) == 15, "Should analyze all headers"
 
     critical_findings = [f for f in findings if f["severity"] == "critical"]
 
@@ -85,7 +85,7 @@ def test_aws_headers_analysis(aws_headers):
     """
     findings = analyze_headers(aws_headers)
 
-    assert len(findings) == 12, "Should analyze all headers"
+    assert len(findings) == 15, "Should analyze all headers"
 
     # Just verify analysis completes without errors
     for finding in findings:
@@ -106,7 +106,7 @@ def test_all_real_world_sites(all_real_world_fixtures):
         findings = analyze_headers(fixture["headers"])
 
         # Verify analysis completes without errors
-        assert len(findings) == 12, f"{site_name}: Should analyze all 12 headers"
+        assert len(findings) == 15, f"{site_name}: Should analyze all 15 headers"
 
         # Verify all findings have required fields
         for finding in findings:
@@ -152,7 +152,7 @@ def test_weak_site_detection(weak_headers):
     """
     findings = analyze_headers(weak_headers)
 
-    assert len(findings) == 12, "Should analyze all headers"
+    assert len(findings) == 15, "Should analyze all headers"
 
     critical = [f for f in findings if f["severity"] == "critical"]
     high = [f for f in findings if f["severity"] == "high"]
@@ -170,7 +170,7 @@ def test_missing_critical_headers(missing_critical_headers):
     """
     findings = analyze_headers(missing_critical_headers)
 
-    assert len(findings) == 12, "Should analyze all headers"
+    assert len(findings) == 15, "Should analyze all headers"
 
     # Find HSTS and CSP findings
     hsts_finding = next(

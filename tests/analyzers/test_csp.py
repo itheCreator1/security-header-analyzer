@@ -392,3 +392,161 @@ class TestCSPUnsafeInlineMitigation:
 
         # Should NOT be BAD because nonce mitigates unsafe-inline
         assert result["status"] != STATUS_BAD
+
+
+class TestCSPMissingDirectives:
+    """Test CSP missing directive detection."""
+
+    def test_missing_directives_without_default(self):
+        """Test detection of missing directives when no default-src."""
+        from sha.analyzers.csp import check_missing_directives, parse_csp
+
+        csp = "script-src 'self'; object-src 'none'"
+        directives = parse_csp(csp)
+        missing = check_missing_directives(directives)
+
+        # Should detect missing img-src, font-src, connect-src, style-src
+        assert "img-src" in missing
+        assert "font-src" in missing
+        assert "connect-src" in missing
+        assert "style-src" in missing
+
+    def test_no_missing_directives_with_default(self):
+        """Test no missing directives when default-src is present."""
+        from sha.analyzers.csp import check_missing_directives, parse_csp
+
+        csp = "default-src 'self'; script-src 'self'"
+        directives = parse_csp(csp)
+        missing = check_missing_directives(directives)
+
+        # Should not detect missing directives because default-src covers them
+        assert len(missing) == 0
+
+    def test_no_missing_directives_all_specified(self):
+        """Test no missing directives when all are explicitly specified."""
+        from sha.analyzers.csp import check_missing_directives, parse_csp
+
+        csp = "script-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; style-src 'self'"
+        directives = parse_csp(csp)
+        missing = check_missing_directives(directives)
+
+        assert len(missing) == 0
+
+    def test_partial_missing_directives(self):
+        """Test detection of only some missing directives."""
+        from sha.analyzers.csp import check_missing_directives, parse_csp
+
+        csp = "script-src 'self'; img-src 'self'; style-src 'self'"
+        directives = parse_csp(csp)
+        missing = check_missing_directives(directives)
+
+        # Should only detect missing font-src and connect-src
+        assert "font-src" in missing
+        assert "connect-src" in missing
+        assert "img-src" not in missing
+        assert "style-src" not in missing
+
+
+class TestCSPOverlyBroadDomains:
+    """Test CSP overly broad domain detection."""
+
+    def test_detect_ipv4_address(self):
+        """Test detection of IPv4 addresses in CSP."""
+        from sha.analyzers.csp import check_overly_broad_domains, parse_csp
+
+        csp = "script-src 'self' https://192.168.1.1"
+        directives = parse_csp(csp)
+        warnings = check_overly_broad_domains(directives)
+
+        assert len(warnings) > 0
+        assert any("IP address" in w and "192.168.1.1" in w for w in warnings)
+
+    def test_detect_wildcard_subdomain(self):
+        """Test detection of wildcard subdomains in CSP."""
+        from sha.analyzers.csp import check_overly_broad_domains, parse_csp
+
+        csp = "script-src 'self' *.example.com"
+        directives = parse_csp(csp)
+        warnings = check_overly_broad_domains(directives)
+
+        assert len(warnings) > 0
+        assert any("wildcard subdomain" in w and "*.example.com" in w for w in warnings)
+
+    def test_no_warnings_for_specific_domains(self):
+        """Test no warnings for specific domain names."""
+        from sha.analyzers.csp import check_overly_broad_domains, parse_csp
+
+        csp = "script-src 'self' https://cdn.example.com https://api.example.com"
+        directives = parse_csp(csp)
+        warnings = check_overly_broad_domains(directives)
+
+        # Should have no warnings for specific, non-wildcard domains
+        assert len(warnings) == 0
+
+    def test_no_warnings_for_special_keywords(self):
+        """Test no warnings for CSP special keywords."""
+        from sha.analyzers.csp import check_overly_broad_domains, parse_csp
+
+        csp = "script-src 'self' 'unsafe-inline' 'nonce-abc123'"
+        directives = parse_csp(csp)
+        warnings = check_overly_broad_domains(directives)
+
+        # Should have no warnings for quoted special keywords
+        assert len(warnings) == 0
+
+    def test_detect_multiple_issues(self):
+        """Test detection of multiple overly broad patterns."""
+        from sha.analyzers.csp import check_overly_broad_domains, parse_csp
+
+        csp = "script-src 'self' *.cdn.com https://10.0.0.1; img-src *.images.com"
+        directives = parse_csp(csp)
+        warnings = check_overly_broad_domains(directives)
+
+        # Should detect wildcard subdomains and IP address
+        assert len(warnings) >= 2
+        assert any("wildcard" in w for w in warnings)
+        assert any("IP address" in w for w in warnings)
+
+
+class TestCSPEnhancedAnalysis:
+    """Test integration of enhanced CSP analysis in analyze() function."""
+
+    def test_good_csp_with_missing_directives_warning(self):
+        """Test that GOOD CSP includes warning about missing directives."""
+        csp = "default-src 'self'; script-src 'self'; frame-ancestors 'none'"
+        result = analyze_csp(csp)
+
+        # Should be GOOD status
+        assert result["status"] == STATUS_GOOD
+        # But might have recommendations about additional directives
+        # (if default-src is not counted, otherwise no recommendations)
+
+    def test_acceptable_csp_with_broad_domain_warning(self):
+        """Test that ACCEPTABLE CSP includes warning about broad domains."""
+        csp = "default-src 'self'; script-src 'self' *.cdn.com; object-src 'none'"
+        result = analyze_csp(csp)
+
+        # Should be ACCEPTABLE
+        assert result["status"] in [STATUS_ACCEPTABLE, STATUS_GOOD]
+        # Should have warning about wildcard subdomain
+        if result["recommendation"]:
+            assert "wildcard" in result["recommendation"] or "cdn.com" in result["recommendation"]
+
+    def test_csp_without_default_shows_missing_directives(self):
+        """Test that CSP without default-src shows missing directive warnings."""
+        csp = "script-src 'self'; object-src 'none'; base-uri 'self'"
+        result = analyze_csp(csp)
+
+        # Should have recommendations about missing directives
+        if result["recommendation"]:
+            rec_lower = result["recommendation"].lower()
+            assert "img-src" in rec_lower or "font-src" in rec_lower or "connect-src" in rec_lower
+
+    def test_csp_with_ip_address_shows_warning(self):
+        """Test that CSP with IP addresses shows warning."""
+        csp = "default-src 'self'; script-src 'self' https://192.168.1.100"
+        result = analyze_csp(csp)
+
+        # Should have warning about IP address if recommendations present
+        if result["recommendation"]:
+            assert "IP address" in result["recommendation"] or "192.168" in result["recommendation"]

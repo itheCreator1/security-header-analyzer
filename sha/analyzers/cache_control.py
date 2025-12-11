@@ -1,0 +1,286 @@
+"""
+Cache-Control Header Analyzer.
+
+This module contains configuration and analysis logic for the
+Cache-Control header which controls HTTP caching behavior.
+
+Note: Cache-Control meaning is context-dependent (API vs static assets).
+This analyzer provides general security guidance - flag 'public' as
+potentially dangerous for sensitive content.
+"""
+
+from typing import Any, Dict, Optional
+
+from ..config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
+
+HEADER_KEY = "cache-control"
+
+# One year in seconds (365 days)
+MAX_AGE_ONE_YEAR = 31536000
+
+CONFIG = {
+    "display_name": "Cache-Control",
+    "severity_missing": "low",  # Missing is context-dependent
+    "description": "Controls HTTP caching behavior for responses",
+    "validation": {
+        # Good directives for sensitive content
+        "secure_directives": ["no-store", "no-cache", "private"],
+        # Warning thresholds
+        "max_age_long_threshold": MAX_AGE_ONE_YEAR,  # Warn if >1 year without immutable
+    },
+    "messages": {
+        STATUS_GOOD: "Cache-Control is properly configured to prevent sensitive data caching",
+        STATUS_ACCEPTABLE: "Cache-Control is present with reasonable caching policy",
+        STATUS_BAD: "Cache-Control may allow caching of sensitive data",
+        STATUS_MISSING: "Cache-Control header is missing - caching behavior depends on browser defaults",
+    },
+    "recommendations": {
+        "missing": "Add Cache-Control header with appropriate directives for your content type",
+        "public_warning": "Using 'public' may cache sensitive data - verify this is appropriate for your content",
+        "add_no_store": "Consider using 'no-store' for sensitive data to prevent all caching",
+        "add_private": "Consider using 'private' to prevent shared/proxy caching",
+        "long_max_age": "Very long max-age without 'immutable' - consider if this is appropriate",
+        "example_sensitive": "For sensitive data: Cache-Control: no-store, private",
+        "example_static": "For static assets: Cache-Control: public, max-age=31536000, immutable",
+    },
+}
+
+
+def parse_cache_control(value: str) -> Dict[str, Any]:
+    """
+    Parse Cache-Control header value into directives.
+
+    Args:
+        value: Cache-Control header value
+
+    Returns:
+        Dictionary with:
+        - no_store: bool
+        - no_cache: bool
+        - private: bool
+        - public: bool
+        - max_age: int or None (in seconds)
+        - s_maxage: int or None (in seconds, for shared caches)
+        - immutable: bool
+        - must_revalidate: bool
+        - proxy_revalidate: bool
+        - no_transform: bool
+
+    Example:
+        >>> parse_cache_control("no-store, private")
+        {"no_store": True, "private": True, "public": False, ...}
+    """
+    result = {
+        "no_store": False,
+        "no_cache": False,
+        "private": False,
+        "public": False,
+        "max_age": None,
+        "s_maxage": None,
+        "immutable": False,
+        "must_revalidate": False,
+        "proxy_revalidate": False,
+        "no_transform": False,
+    }
+
+    # Split by comma and parse each directive
+    directives = value.split(",")
+
+    for directive in directives:
+        directive = directive.strip().lower()
+        if not directive:
+            continue
+
+        # Check for directive=value
+        if "=" in directive:
+            dir_name, dir_value = directive.split("=", 1)
+            dir_name = dir_name.strip()
+            dir_value = dir_value.strip()
+
+            if dir_name == "max-age":
+                try:
+                    result["max_age"] = int(dir_value)
+                except ValueError:
+                    pass  # Invalid max-age, leave as None
+            elif dir_name == "s-maxage":
+                try:
+                    result["s_maxage"] = int(dir_value)
+                except ValueError:
+                    pass
+        else:
+            # Boolean directives
+            if directive == "no-store":
+                result["no_store"] = True
+            elif directive == "no-cache":
+                result["no_cache"] = True
+            elif directive == "private":
+                result["private"] = True
+            elif directive == "public":
+                result["public"] = True
+            elif directive == "immutable":
+                result["immutable"] = True
+            elif directive == "must-revalidate":
+                result["must_revalidate"] = True
+            elif directive == "proxy-revalidate":
+                result["proxy_revalidate"] = True
+            elif directive == "no-transform":
+                result["no_transform"] = True
+
+    return result
+
+
+def analyze(value: Optional[str]) -> Dict[str, Any]:
+    """
+    Analyze Cache-Control header.
+
+    Validation rules:
+    - Missing: Low severity (context-dependent)
+    - no-store: Good (prevents all caching)
+    - max-age=0: Good (no caching)
+    - private + no-cache: Good (only browser cache, requires revalidation)
+    - private: Acceptable (prevents shared cache)
+    - no-cache: Acceptable (requires revalidation)
+    - public: Bad/Warning (may cache sensitive data)
+    - Very long max-age without immutable: Low severity warning
+
+    Args:
+        value: Header value or None if missing
+
+    Returns:
+        Finding dictionary with keys:
+        - header_name: str
+        - status: str (good/acceptable/bad/missing)
+        - severity: str (critical/high/medium/low/info)
+        - message: str
+        - actual_value: str or None
+        - recommendation: str or None
+
+    Note:
+        Cache-Control interpretation is context-dependent.
+        This analyzer provides general security guidance.
+    """
+    header_name = CONFIG["display_name"]
+
+    # Missing header
+    if value is None:
+        return {
+            "header_name": header_name,
+            "status": STATUS_MISSING,
+            "severity": CONFIG["severity_missing"],
+            "message": CONFIG["messages"][STATUS_MISSING],
+            "actual_value": None,
+            "recommendation": CONFIG["recommendations"]["missing"],
+        }
+
+    # Parse directives
+    parsed = parse_cache_control(value)
+
+    # Analyze security posture
+    has_no_store = parsed["no_store"]
+    has_no_cache = parsed["no_cache"]
+    has_private = parsed["private"]
+    has_public = parsed["public"]
+    max_age = parsed["max_age"]
+    has_immutable = parsed["immutable"]
+
+    # Check for good configurations
+    if has_no_store:
+        # Best: no caching at all
+        return {
+            "header_name": header_name,
+            "status": STATUS_GOOD,
+            "severity": "info",
+            "message": CONFIG["messages"][STATUS_GOOD] + " (no-store prevents all caching)",
+            "actual_value": value,
+            "recommendation": None,
+        }
+
+    if max_age == 0:
+        # Good: effectively no caching
+        return {
+            "header_name": header_name,
+            "status": STATUS_GOOD,
+            "severity": "info",
+            "message": CONFIG["messages"][STATUS_GOOD] + " (max-age=0 prevents caching)",
+            "actual_value": value,
+            "recommendation": None,
+        }
+
+    if has_private and has_no_cache:
+        # Good: browser cache only, requires revalidation
+        return {
+            "header_name": header_name,
+            "status": STATUS_GOOD,
+            "severity": "info",
+            "message": CONFIG["messages"][STATUS_GOOD] + " (private + no-cache)",
+            "actual_value": value,
+            "recommendation": None,
+        }
+
+    # Check for problematic configurations
+    if has_public:
+        # Warning: public caching may be inappropriate for sensitive data
+        return {
+            "header_name": header_name,
+            "status": STATUS_BAD,
+            "severity": "medium",
+            "message": f"{CONFIG['messages'][STATUS_BAD]} - 'public' allows caching by all caches",
+            "actual_value": value,
+            "recommendation": CONFIG["recommendations"]["public_warning"],
+        }
+
+    # Check for acceptable configurations
+    if has_private:
+        # Acceptable: only browser caching
+        recommendations = []
+
+        # Check for long max-age
+        if (
+            max_age
+            and max_age > CONFIG["validation"]["max_age_long_threshold"]
+            and not has_immutable
+        ):
+            recommendations.append(CONFIG["recommendations"]["long_max_age"])
+
+        return {
+            "header_name": header_name,
+            "status": STATUS_ACCEPTABLE,
+            "severity": "low" if recommendations else "info",
+            "message": CONFIG["messages"][STATUS_ACCEPTABLE] + " (private prevents shared caching)",
+            "actual_value": value,
+            "recommendation": "; ".join(recommendations) if recommendations else None,
+        }
+
+    if has_no_cache:
+        # Acceptable: requires revalidation
+        return {
+            "header_name": header_name,
+            "status": STATUS_ACCEPTABLE,
+            "severity": "info",
+            "message": CONFIG["messages"][STATUS_ACCEPTABLE] + " (no-cache requires revalidation)",
+            "actual_value": value,
+            "recommendation": None,
+        }
+
+    # Default: has cache control but not obviously secure or insecure
+    recommendations = []
+
+    if max_age and max_age > CONFIG["validation"]["max_age_long_threshold"] and not has_immutable:
+        recommendations.append(CONFIG["recommendations"]["long_max_age"])
+
+    # If caching is allowed, suggest being more restrictive
+    if max_age and max_age > 0:
+        recommendations.append(CONFIG["recommendations"]["add_private"])
+
+    return {
+        "header_name": header_name,
+        "status": STATUS_ACCEPTABLE,
+        "severity": "low",
+        "message": CONFIG["messages"][STATUS_ACCEPTABLE],
+        "actual_value": value,
+        "recommendation": (
+            "; ".join(recommendations)
+            if recommendations
+            else "Consider adding 'private' or 'no-cache' for sensitive content"
+        ),
+    }

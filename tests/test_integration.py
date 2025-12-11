@@ -155,7 +155,7 @@ class TestMainFunction:
             assert (
                 "Medium Issues:   5" in captured.out
             )  # X-Content-Type-Options, COEP, COOP, CORP, X-Permitted-Cross-Domain-Policies
-            assert "Low Issues:      2" in captured.out  # X-XSS-Protection, X-Download-Options
+            assert "Low Issues:      4" in captured.out  # X-XSS-Protection, X-Download-Options, Cache-Control, Expect-CT
 
     def test_main_json_output(self, capsys):
         """Test JSON output format."""

@@ -20,7 +20,7 @@ class TestAnalyzeHeaders:
         findings = analyze_headers(headers)
 
         # Should analyze all 12 registered headers
-        assert len(findings) == 12
+        assert len(findings) == 15
         assert all(f["status"] == STATUS_MISSING for f in findings)
 
     def test_analyze_headers_all_good(self):
@@ -38,10 +38,13 @@ class TestAnalyzeHeaders:
             "x-xss-protection": "0",
             "x-download-options": "noopen",
             "x-permitted-cross-domain-policies": "none",
+            "set-cookie": "sessionid=abc123; Secure; HttpOnly; SameSite=Strict; Max-Age=3600",
+            "cache-control": "no-store, private",
+            "expect-ct": "max-age=86400, enforce",
         }
         findings = analyze_headers(headers)
 
-        assert len(findings) == 12
+        assert len(findings) == 15
         assert all(f["status"] == STATUS_GOOD for f in findings)
 
     def test_analyze_headers_mixed(self):
@@ -62,7 +65,7 @@ class TestAnalyzeHeaders:
         }
         findings = analyze_headers(headers)
 
-        assert len(findings) == 12
+        assert len(findings) == 15
 
         # Find specific findings
         hsts_finding = next(f for f in findings if f["header_name"] == "Strict-Transport-Security")
@@ -104,4 +107,4 @@ class TestAnalyzeHeaders:
 
         # Note: Our headers dict uses lowercase keys, so these won't be found
         # This test ensures the analyzer handles the configured header names
-        assert len(findings) == 12
+        assert len(findings) == 15

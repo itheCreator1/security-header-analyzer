@@ -12,7 +12,7 @@
     "critical_count": 2,
     "high_count": 3,
     "medium_count": 4,
-    "low_count": 2,
+    "low_count": 4,
     "notes": "Fictional site with minimal security headers - all security headers missing (X-Content-Type-Options is medium-high, not medium)"
   }
 }

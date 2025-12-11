@@ -253,6 +253,68 @@ def check_csp_security_directives(directives: Dict[str, List[str]], config: Dict
     return False
 
 
+def check_missing_directives(directives: Dict[str, List[str]]) -> List[str]:
+    """
+    Check for common directives that should be explicitly defined.
+
+    Args:
+        directives: Parsed CSP directives
+
+    Returns:
+        List of missing directive names
+    """
+    missing = []
+    common_directives = ["img-src", "font-src", "connect-src", "style-src"]
+
+    # Only flag as missing if there's no default-src
+    has_default = "default-src" in directives
+
+    if not has_default:
+        for directive in common_directives:
+            if directive not in directives:
+                missing.append(directive)
+
+    return missing
+
+
+def check_overly_broad_domains(directives: Dict[str, List[str]]) -> List[str]:
+    """
+    Check for overly broad domain allowlists in CSP directives.
+
+    Args:
+        directives: Parsed CSP directives
+
+    Returns:
+        List of warning messages for overly broad domains
+    """
+    warnings = []
+
+    for directive_name, directive_values in directives.items():
+        for value in directive_values:
+            # Skip special keywords
+            if value.startswith("'"):
+                continue
+
+            # Check for IP addresses (usually bad practice)
+            if any(char.isdigit() for char in value) and ("." in value or ":" in value):
+                # Simple check for IPv4/IPv6 patterns
+                parts = (
+                    value.replace("http://", "").replace("https://", "").split("/")[0].split(":")
+                )
+                if any(
+                    part.replace(".", "").replace("[", "").replace("]", "").isdigit()
+                    for part in parts
+                ):
+                    warnings.append(f"{directive_name} contains IP address ({value})")
+                    continue
+
+            # Check for wildcard subdomains
+            if value.startswith("*."):
+                warnings.append(f"{directive_name} contains wildcard subdomain ({value})")
+
+    return warnings
+
+
 def analyze(value: Optional[str]) -> Dict[str, Any]:
     """
     Analyze Content-Security-Policy header.
@@ -315,21 +377,40 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
     has_restrictive_default = check_csp_restrictive_default(directives, CONFIG)
     has_security_directives = check_csp_security_directives(directives, CONFIG)
 
+    # Check for additional warnings
+    missing_directives = check_missing_directives(directives)
+    broad_domain_warnings = check_overly_broad_domains(directives)
+
     # Evaluate overall CSP quality
     if has_restrictive_default and has_security_directives:
+        # Build recommendations for warnings even in GOOD status
+        recommendations = []
+        if missing_directives:
+            recommendations.append(
+                f"Consider adding specific directives: {', '.join(missing_directives)}"
+            )
+        if broad_domain_warnings:
+            recommendations.extend(broad_domain_warnings[:2])  # Limit to first 2 warnings
+
         return {
             "header_name": header_name,
             "status": STATUS_GOOD,
             "severity": "info",
             "message": CONFIG["messages"][STATUS_GOOD],
             "actual_value": value,
-            "recommendation": None,
+            "recommendation": "; ".join(recommendations) if recommendations else None,
         }
     elif has_restrictive_default or len(directives) >= 3:
         # Has some good directives but could be improved
         recommendations = []
         if not has_security_directives:
             recommendations.append(CONFIG["recommendations"]["add_directives"])
+        if missing_directives:
+            recommendations.append(
+                f"Consider adding specific directives: {', '.join(missing_directives)}"
+            )
+        if broad_domain_warnings:
+            recommendations.extend(broad_domain_warnings[:2])  # Limit to first 2 warnings
 
         return {
             "header_name": header_name,
@@ -341,11 +422,19 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
         }
     else:
         # CSP is present but too permissive
+        recommendations = [CONFIG["recommendations"]["example"]]
+        if missing_directives:
+            recommendations.append(
+                f"Consider adding specific directives: {', '.join(missing_directives)}"
+            )
+        if broad_domain_warnings:
+            recommendations.extend(broad_domain_warnings[:2])  # Limit to first 2 warnings
+
         return {
             "header_name": header_name,
             "status": STATUS_ACCEPTABLE,
             "severity": "medium",
             "message": f"{CONFIG['messages'][STATUS_ACCEPTABLE]} - policy could be more restrictive",
             "actual_value": value,
-            "recommendation": CONFIG["recommendations"]["example"],
+            "recommendation": "; ".join(recommendations),
         }
