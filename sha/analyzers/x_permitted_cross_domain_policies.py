@@ -1,9 +1,87 @@
 """
-X-Permitted-Cross-Domain-Policies Header Analyzer.
+X-Permitted-Cross-Domain-Policies Analyzer - Flash/PDF policy control
 
-This module contains configuration and analysis logic for the
-X-Permitted-Cross-Domain-Policies header which controls whether
-Adobe Flash Player and PDF documents can load cross-domain policy files.
+Module: sha.analyzers.x_permitted_cross_domain_policies
+
+Purpose:
+    Analyzes the X-Permitted-Cross-Domain-Policies header to control whether Adobe
+    Flash Player and PDF viewers can load cross-domain policy files (crossdomain.xml).
+    Validates policy values to prevent unauthorized cross-origin data access by Flash/PDF.
+
+Overview:
+    The X-Permitted-Cross-Domain-Policies analyzer enforces restrictions on Flash and
+    PDF cross-domain policy file loading. It validates five possible values (none,
+    master-only, all, by-content-type, by-ftp-filename) and categorizes them by
+    security risk. While Flash is deprecated (EOL 2020), this header still applies
+    to PDF viewers in some browsers and should be set to 'none' for defense-in-depth.
+
+Key Functions:
+    - analyze(value) -> Finding
+      Main analysis function that validates policy value and assigns severity based
+      on permissiveness (none=good, master-only=acceptable, all=bad/high)
+
+Validation Rules:
+    - Missing header: MEDIUM severity (Flash/PDF may load policy files)
+    - none: GOOD (completely prohibits policy file loading)
+    - master-only: ACCEPTABLE, low severity (allows /crossdomain.xml only)
+    - all: BAD, HIGH severity (allows policy files anywhere - very insecure)
+    - by-content-type: BAD, MEDIUM severity (too permissive)
+    - by-ftp-filename: BAD, MEDIUM severity (legacy, insecure)
+    - Unknown value: BAD, MEDIUM severity
+
+Attack Scenarios Prevented:
+    - **Flash Cross-Domain Data Theft** (legacy): Flash could load policy files
+      from arbitrary paths, allowing cross-origin data access if attacker uploads
+      malicious crossdomain.xml to user-writable directories
+    - **PDF Cross-Origin Requests**: Some PDF viewers respect crossdomain.xml,
+      allowing embedded PDFs to make cross-origin requests if policy permits
+    - **Policy File Injection**: With 'all' value, attackers upload policy files
+      to any writable path (/uploads/crossdomain.xml) to bypass same-origin policy
+
+Policy Value Meanings:
+    - **none**: No policy files allowed (maximum security)
+    - **master-only**: Only /crossdomain.xml at domain root (Adobe default)
+    - **all**: Policy files anywhere on domain (VERY DANGEROUS)
+    - **by-content-type**: Policy files with specific MIME type (deprecated)
+    - **by-ftp-filename**: FTP-specific policy files (legacy, insecure)
+
+Legacy Context:
+    - Flash Player reached end-of-life December 31, 2020
+    - However, header still relevant for:
+      * PDF viewers (Adobe Reader, browser PDF viewers)
+      * Defense-in-depth (prevent future plugin vulnerabilities)
+      * Compliance/security scanning (expected by tools)
+    - Best practice: Set to 'none' even post-Flash
+
+Configuration:
+    - best_value: 'none' (prohibit all policy files)
+    - acceptable_value: 'master-only' (allow /crossdomain.xml only)
+    - bad_values: 'all' (high severity), 'by-content-type' (medium),
+      'by-ftp-filename' (medium)
+
+Related Modules:
+    - sha.analyzers.__init__ - Registers analyzer in ANALYZER_REGISTRY
+    - sha.config - Imports STATUS_* constants
+    - docs/headers/X-Permitted-Cross-Domain-Policies.md - Detailed documentation
+
+Example Usage:
+    >>> from sha.analyzers.x_permitted_cross_domain_policies import analyze
+    >>> # Best practice - prohibit all
+    >>> finding = analyze("none")
+    >>> finding["status"]
+    "good"
+
+    >>> # Dangerous - allows anywhere
+    >>> finding = analyze("all")
+    >>> finding["status"]
+    "bad"
+    >>> finding["severity"]
+    "high"
+
+See Also:
+    - docs/headers/X-Permitted-Cross-Domain-Policies.md - Attack scenarios and history
+    - docs/architecture/EXTENSIBILITY.md - Adding new analyzers
+    - https://www.adobe.com/devnet-docs/acrobatetk/tools/AppSec/CrossDomain.html
 """
 
 from typing import Any, Dict, Optional

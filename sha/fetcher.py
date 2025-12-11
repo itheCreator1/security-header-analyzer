@@ -1,8 +1,89 @@
 """
-Fetcher module for Security Header Analyzer.
+Fetcher Layer - HTTP header fetching with SSRF protection
 
-This module handles fetching HTTP headers from URLs with proper error handling
-and security protections (SSRF prevention).
+Module: sha.fetcher
+
+Purpose:
+    Handles all HTTP requests to fetch security headers from target URLs with
+    comprehensive SSRF (Server-Side Request Forgery) protection, DNS rebinding
+    validation, and robust error handling.
+
+Overview:
+    The fetcher module implements multi-layer security protections to prevent
+    Server-Side Request Forgery attacks while reliably fetching HTTP headers.
+    It validates URLs before requests, blocks private IP ranges, validates
+    redirect destinations, and provides graceful error handling with specific
+    exception types for different failure modes.
+
+Key Functions:
+    - fetch_headers(url, ...) -> Dict[str, Union[str, List[str]]]
+      Main entry point for fetching headers from a URL (raises exceptions)
+
+    - fetch_headers_safe(url, ...) -> Tuple[Dict, Optional[Exception]]
+      Non-throwing wrapper that returns errors instead of raising them
+
+    - validate_url_safety(url) -> None
+      Pre-request SSRF validation (checks DNS, private IPs, localhost)
+
+    - validate_redirect_destination(url) -> None
+      Post-redirect validation to prevent DNS rebinding attacks
+
+    - normalize_url(url) -> str
+      Adds HTTPS protocol if missing from URL
+
+    - is_private_ip(ip_str) -> bool
+      Checks if IP address is in private/loopback ranges
+
+Security Features:
+    SSRF Protection (Blocked IP Ranges):
+    - IPv4: 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16
+    - IPv6: ::1, fc00::/7, fe80::/10
+    - Localhost names: localhost, 0.0.0.0
+
+    Multi-Layer Validation:
+    1. Pre-request DNS validation (validate_url_safety)
+    2. Private IP range checking (is_private_ip)
+    3. Post-redirect validation (validate_redirect_destination)
+    4. Redirect limit enforcement (max_redirects)
+
+Security Considerations:
+    Known TOCTOU Vulnerability:
+    The DNS validation has a Time-of-Check-Time-of-Use (TOCTOU) race condition.
+    An attacker controlling DNS could:
+    1. Pass initial validation with a public IP
+    2. Change DNS to point to private IP before request
+    3. Bypass SSRF protection
+
+    Mitigation: validate_redirect_destination() provides additional protection
+    by re-validating DNS after redirects, reducing (but not eliminating) the
+    attack window.
+
+    See: docs/architecture/SECURITY.md#toctou-vulnerability for details.
+
+Related Modules:
+    - sha.config - Imports PRIVATE_IP_RANGES, DEFAULT_TIMEOUT, exception classes
+    - sha.main - Calls fetch_headers() to get headers for analysis
+    - sha.analyzer - Consumes headers dictionary for analysis
+
+Example Usage:
+    >>> from sha.fetcher import fetch_headers
+    >>> headers = fetch_headers("https://example.com")
+    >>> headers["strict-transport-security"]
+    "max-age=31536000; includeSubDomains"
+
+    >>> # Safe variant that doesn't raise exceptions
+    >>> headers, error = fetch_headers_safe("https://example.com")
+    >>> if error:
+    ...     print(f"Failed: {error}")
+
+    >>> # Normalize URL (add protocol)
+    >>> normalize_url("example.com")
+    "https://example.com"
+
+See Also:
+    - docs/architecture/COMPONENTS.md#fetcher-layer - Architecture details
+    - docs/architecture/SECURITY.md - SSRF protection explained
+    - SECURITY.md - Known vulnerabilities and limitations
 """
 
 import ipaddress

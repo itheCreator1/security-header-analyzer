@@ -1,9 +1,81 @@
 """
-Cross-Origin-Opener-Policy (COOP) Header Analyzer.
+COOP Analyzer - Cross-Origin-Opener-Policy for browsing context isolation
 
-This module contains configuration and analysis logic for the
-Cross-Origin-Opener-Policy header which isolates browsing context
-and protects against cross-origin attacks.
+Module: sha.analyzers.coop
+
+Purpose:
+    Analyzes the Cross-Origin-Opener-Policy (COOP) header which isolates browsing
+    contexts from cross-origin windows, protecting against Spectre-like attacks and
+    enabling cross-origin isolation when combined with COEP.
+
+Overview:
+    The COOP analyzer validates browsing context isolation policies that break
+    window.opener references between cross-origin windows. It checks for three values:
+    'same-origin' (strict isolation), 'same-origin-allow-popups' (allows popups),
+    and 'unsafe-none' (no isolation - bad). COOP prevents cross-origin windows from
+    accessing each other's memory and provides Spectre attack mitigation.
+
+Key Functions:
+    - analyze(value) -> Finding
+      Main analysis function that validates COOP value and determines isolation strength
+
+Validation Rules:
+    - Missing header: MEDIUM severity (important for Spectre protection)
+    - same-origin: GOOD, info severity (strongest isolation - breaks all cross-origin window access)
+    - same-origin-allow-popups: ACCEPTABLE, low severity (allows opening popups, reduced isolation)
+    - unsafe-none or invalid: BAD, medium severity (no isolation)
+
+Attack Scenarios Prevented:
+    - **Spectre via Cross-Origin Window**: Without COOP, cross-origin windows share
+      same browsing context group, allowing Spectre timing attacks to leak data
+      across origins through shared process memory
+    - **window.opener Exploitation**: Prevents malicious sites opened in new tabs
+      from accessing opener window (e.g., changing opener's location for phishing)
+
+Policy Values:
+    - **same-origin**: Isolate from ALL cross-origin windows (breaks window.opener
+      for cross-origin, enables cross-origin isolation with COEP)
+    - **same-origin-allow-popups**: Like same-origin but windows opened by this page
+      can retain opener reference (useful if your site opens popups)
+    - **unsafe-none**: No isolation (default, unsafe - allows cross-origin window access)
+
+Use Cases:
+    - **Enable SharedArrayBuffer**: Requires COOP: same-origin + COEP (cross-origin isolation)
+    - **Spectre Protection**: Isolates process memory from cross-origin windows
+    - **window.opener Security**: Prevents cross-origin opener manipulation
+
+Deployment Considerations:
+    - COOP: same-origin breaks window.opener for cross-origin windows (may affect OAuth flows)
+    - same-origin-allow-popups preserves popups but reduces isolation strength
+    - Required for full cross-origin isolation (with COEP)
+
+Configuration:
+    - best_values: 'same-origin' (full isolation)
+    - acceptable_values: 'same-origin-allow-popups' (allows popups)
+    - bad_values: 'unsafe-none' (no isolation)
+
+Related Modules:
+    - sha.analyzers.__init__ - Registers analyzer in ANALYZER_REGISTRY
+    - sha.analyzers.coep - Cross-Origin-Embedder-Policy (companion for SharedArrayBuffer)
+    - sha.config - Imports STATUS_* constants
+    - docs/headers/COOP.md - Detailed COOP documentation
+
+Example Usage:
+    >>> from sha.analyzers.coop import analyze
+    >>> # Full isolation
+    >>> finding = analyze("same-origin")
+    >>> finding["status"]
+    "good"
+
+    >>> # Allow popups
+    >>> finding = analyze("same-origin-allow-popups")
+    >>> finding["status"]
+    "acceptable"
+
+See Also:
+    - docs/headers/COOP.md - Technical explanation and attack scenarios
+    - docs/headers/COEP.md - Companion header for SharedArrayBuffer
+    - https://web.dev/why-coop-coep/ - Why COOP+COEP matter
 """
 
 from typing import Any, Dict, Optional

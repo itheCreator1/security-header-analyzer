@@ -1,9 +1,85 @@
 """
-Cross-Origin-Embedder-Policy (COEP) Header Analyzer.
+COEP Analyzer - Cross-Origin-Embedder-Policy for SharedArrayBuffer access
 
-This module contains configuration and analysis logic for the
-Cross-Origin-Embedder-Policy header which enables cross-origin isolation
-and allows use of powerful features like SharedArrayBuffer.
+Module: sha.analyzers.coep
+
+Purpose:
+    Analyzes the Cross-Origin-Embedder-Policy (COEP) header which enables cross-origin
+    isolation, allowing use of powerful features like SharedArrayBuffer and high-resolution
+    timers. Validates require-corp (strict) and credentialless (lenient) policies.
+
+Overview:
+    The COEP analyzer validates cross-origin isolation policies required for accessing
+    SharedArrayBuffer (multi-threaded memory) and precise performance timers. It checks
+    for two valid values: 'require-corp' (strict - requires CORP on all subresources)
+    and 'credentialless' (lenient - loads resources without credentials). COEP is
+    optional unless your application needs SharedArrayBuffer for performance-critical
+    features (WebAssembly, video processing, cryptography).
+
+Key Functions:
+    - analyze(value) -> Finding
+      Main analysis function that validates COEP value and categorizes policy strength
+
+Validation Rules:
+    - Missing header: MEDIUM severity (only needed for SharedArrayBuffer/precise timers)
+    - require-corp: GOOD, info severity (strongest cross-origin isolation)
+    - credentialless: ACCEPTABLE, low severity (newer, less strict alternative)
+    - Invalid/unknown value: BAD, medium severity
+
+Purpose and Use Cases:
+    COEP enables "cross-origin isolated" state which unlocks:
+    - **SharedArrayBuffer**: Multi-threaded shared memory (required for performance-
+      critical WebAssembly, video encoding, scientific computing)
+    - **High-Resolution Timers**: performance.now() with microsecond precision
+      (normally degraded to 100μs for Spectre mitigation)
+    - **Memory Measurement API**: Precise memory usage tracking
+
+Attack Prevention (Spectre Mitigation):
+    COEP prevents Spectre-like timing attacks by ensuring embedded resources either:
+    1. Explicitly opt-in with CORP header (require-corp mode)
+    2. Load without credentials (credentialless mode)
+
+    This prevents attackers from using timing side-channels to read cross-origin data.
+
+Policy Values:
+    - **require-corp**: All cross-origin resources must have Cross-Origin-Resource-Policy
+      header (strict but may break third-party resources)
+    - **credentialless**: Cross-origin resources load without cookies/auth (easier
+      deployment, less strict)
+
+Deployment Considerations:
+    - Most sites DON'T need COEP (only if using SharedArrayBuffer)
+    - require-corp can break third-party embeds (ads, analytics) if they lack CORP header
+    - credentialless is easier to deploy but requires newer browser support
+    - COEP requires COOP: same-origin for full cross-origin isolation
+
+Configuration:
+    - best_values: 'require-corp' (strongest isolation)
+    - acceptable_values: 'credentialless' (newer, easier deployment)
+
+Related Modules:
+    - sha.analyzers.__init__ - Registers analyzer in ANALYZER_REGISTRY
+    - sha.analyzers.coop - Cross-Origin-Opener-Policy (required companion)
+    - sha.analyzers.corp - Cross-Origin-Resource-Policy (required for require-corp)
+    - sha.config - Imports STATUS_* constants
+    - docs/headers/COEP.md - Detailed COEP documentation
+
+Example Usage:
+    >>> from sha.analyzers.coep import analyze
+    >>> # Strict cross-origin isolation
+    >>> finding = analyze("require-corp")
+    >>> finding["status"]
+    "good"
+
+    >>> # Lenient isolation
+    >>> finding = analyze("credentialless")
+    >>> finding["status"]
+    "acceptable"
+
+See Also:
+    - docs/headers/COEP.md - Technical explanation and use cases
+    - docs/headers/COOP.md - Companion header for full isolation
+    - https://web.dev/coop-coep/ - Cross-origin isolation guide
 """
 
 from typing import Any, Dict, Optional

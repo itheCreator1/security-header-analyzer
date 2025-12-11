@@ -1,8 +1,56 @@
 """
-Main CLI module for Security Header Analyzer.
+CLI Entry Point - Command-line interface and workflow orchestration
 
-This module provides the command-line interface and orchestrates
-the fetching, analysis, and reporting of security headers.
+Module: sha.main
+
+Purpose:
+    Provides the main() function that orchestrates the complete workflow: parsing
+    command-line arguments, fetching headers, analyzing them, generating reports,
+    and handling errors with appropriate exit codes.
+
+Overview:
+    This module is the heart of the CLI tool. It coordinates all major components
+    (fetcher, analyzer, reporter) and provides a clean command-line interface with
+    comprehensive error handling. The main() function follows a pipeline pattern:
+    parse args → fetch headers → analyze → generate report → output & exit.
+
+Key Functions:
+    - main() -> NoReturn
+      Primary entry point that orchestrates the entire analysis workflow.
+      Never returns (always calls sys.exit with appropriate code).
+
+    - parse_args() -> argparse.Namespace
+      Parses and validates command-line arguments. Supports URL input, JSON output,
+      timeout configuration, redirect control, custom User-Agent, and debug mode.
+
+Exit Codes:
+    0  - Success (analysis completed)
+    1  - Network error (timeout, connection failed, SSL error)
+    2  - Invalid input (malformed URL, invalid arguments, SSRF blocked)
+    3  - HTTP error (4xx, 5xx responses from server)
+    130 - User interruption (Ctrl+C / KeyboardInterrupt)
+
+Security Considerations:
+    - SSRF protection enforced through fetcher.validate_url_safety()
+    - All exceptions caught and mapped to appropriate exit codes
+    - No sensitive data logged in normal mode (use --debug cautiously)
+
+Related Modules:
+    - sha.fetcher - HTTP header fetching with SSRF protection
+    - sha.analyzer - Coordinates analysis across all registered analyzers
+    - sha.reporter - Formats findings as text or JSON
+    - sha.config - Configuration constants and exception definitions
+
+Example Usage:
+    >>> from sha.main import main
+    >>> # When called, main() reads sys.argv:
+    >>> # $ python -m sha https://example.com --json
+    >>> main()  # Executes full workflow and exits with code 0
+
+See Also:
+    - docs/USAGE.md - Complete CLI usage guide with examples
+    - docs/architecture/COMPONENTS.md#cli-layer - Architecture details
+    - docs/architecture/DATA_FLOW.md - Pipeline workflow explained
 """
 
 import argparse

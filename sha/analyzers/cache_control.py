@@ -1,12 +1,108 @@
 """
-Cache-Control Header Analyzer.
+Cache-Control Analyzer - HTTP caching security validation
 
-This module contains configuration and analysis logic for the
-Cache-Control header which controls HTTP caching behavior.
+Module: sha.analyzers.cache_control
 
-Note: Cache-Control meaning is context-dependent (API vs static assets).
-This analyzer provides general security guidance - flag 'public' as
-potentially dangerous for sensitive content.
+Purpose:
+    Analyzes the Cache-Control header to prevent sensitive data caching in shared
+    caches (proxies, CDNs). Validates directives for security implications while
+    recognizing that optimal caching strategy is context-dependent (API responses
+    vs static assets).
+
+Overview:
+    The Cache-Control analyzer provides security-focused validation of caching
+    directives. It parses comma-separated directives, evaluates security posture
+    based on no-store/no-cache/private flags, warns about 'public' caching for
+    potentially sensitive content, and flags excessively long max-age without
+    immutable. The analyzer balances security (prevent sensitive data caching)
+    with performance (allow static asset caching), providing context-aware
+    recommendations.
+
+Key Functions:
+    - analyze(value) -> Finding
+      Main analysis function that evaluates caching directives for security
+      implications and provides context-aware recommendations
+
+    - parse_cache_control(value) -> Dict[str, Any]
+      Parses Cache-Control into directive components: no_store, no_cache, private,
+      public, max_age, s_maxage, immutable, must_revalidate, proxy_revalidate,
+      no_transform
+
+Validation Rules:
+    - Missing header: LOW severity (context-dependent - may use browser defaults)
+    - no-store: GOOD (prevents all caching - ideal for sensitive data)
+    - max-age=0: GOOD (effectively no caching)
+    - private + no-cache: GOOD (browser cache only with revalidation)
+    - public: BAD, MEDIUM severity (may cache sensitive data in shared caches)
+    - private: ACCEPTABLE (prevents shared caching)
+    - no-cache: ACCEPTABLE (requires revalidation)
+    - max-age >1 year without immutable: LOW severity warning
+
+Attack Scenarios Prevented:
+    - **Sensitive Data Leakage via Shared Caches**: Without no-store/private,
+      responses may be cached in shared proxies/CDNs where other users can
+      retrieve sensitive data (API responses with personal info, authenticated pages)
+    - **Stale Sensitive Data**: Without no-cache, cached responses may contain
+      outdated sensitive information (user profiles, account balances)
+    - **Proxy Cache Poisoning**: public caching increases attack surface for
+      cache poisoning where attacker injects malicious cached responses
+
+Context-Dependent Security:
+    - **Sensitive Data** (API responses, authenticated pages, user content):
+      * Best: Cache-Control: no-store, private
+      * Acceptable: Cache-Control: private, no-cache
+      * Bad: Cache-Control: public (or missing with long max-age)
+
+    - **Static Assets** (images, CSS, JS with versioned URLs):
+      * Best: Cache-Control: public, max-age=31536000, immutable
+      * Acceptable: Cache-Control: public, max-age=86400
+      * Note: Analyzer may flag 'public' - this is expected for static assets
+
+Cache-Control Directives:
+    - **no-store**: Don't cache response at all (sensitive data)
+    - **no-cache**: Cache but revalidate before use (requires 304 check)
+    - **private**: Only browser cache, not shared caches/proxies
+    - **public**: Allow caching in shared caches (CDNs, proxies)
+    - **max-age**: Cache lifetime in seconds
+    - **s-maxage**: Shared cache max-age (overrides max-age for proxies)
+    - **immutable**: Content never changes (allows long max-age safely)
+    - **must-revalidate**: Revalidate stale responses (no serving stale)
+    - **proxy-revalidate**: Like must-revalidate but only for shared caches
+
+Configuration:
+    - secure_directives: no-store, no-cache, private (prevent sensitive caching)
+    - max_age_long_threshold: 31536000 (1 year - warn without immutable)
+
+Related Modules:
+    - sha.analyzers.__init__ - Registers cache_control.analyze in ANALYZER_REGISTRY
+    - sha.config - Imports STATUS_* constants
+    - docs/headers/Cache-Control.md - Detailed caching security documentation
+
+Example Usage:
+    >>> from sha.analyzers.cache_control import analyze, parse_cache_control
+    >>> # Secure for sensitive data
+    >>> finding = analyze("no-store, private")
+    >>> finding["status"]
+    "good"
+
+    >>> # Parse directives
+    >>> parsed = parse_cache_control("public, max-age=31536000, immutable")
+    >>> parsed["public"]
+    True
+    >>> parsed["max_age"]
+    31536000
+
+    >>> # Warning for public caching
+    >>> finding = analyze("public")
+    >>> finding["status"]
+    "bad"
+    >>> finding["severity"]
+    "medium"
+
+See Also:
+    - docs/headers/Cache-Control.md - Technical explanation and attack scenarios
+    - docs/architecture/EXTENSIBILITY.md - Adding new analyzers
+    - https://tools.ietf.org/html/rfc7234 - HTTP Caching specification
 """
 
 from typing import Any, Dict, Optional

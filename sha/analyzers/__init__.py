@@ -1,8 +1,100 @@
 """
-Security Header Analyzers Registry.
+Analyzer Registry - Dynamic analyzer registration and dispatch
 
-This module provides a registry of all available header analyzers
-and exports them for use by the main analyzer module.
+Module: sha.analyzers
+
+Purpose:
+    Implements the registry pattern for dynamically dispatching header values to
+    appropriate analyzer functions. Maintains ANALYZER_REGISTRY and CONFIG_REGISTRY
+    dictionaries that map header keys to their analysis functions and configurations.
+
+Overview:
+    This module is the central nervous system of the analyzer architecture. It imports
+    all 15 individual analyzer modules (hsts, csp, xframe, etc.) and builds two
+    registries: ANALYZER_REGISTRY (maps header_key → analyze function) and
+    CONFIG_REGISTRY (maps header_key → CONFIG dict). The main analyzer.py module
+    loops through these registries to analyze all headers without knowing specific
+    header details.
+
+Key Components:
+    - ANALYZER_REGISTRY: Dict[str, Callable]
+      Maps header keys (e.g., "strict-transport-security") to analyzer functions
+      (e.g., hsts.analyze). Used by analyze_headers() to dispatch analysis.
+
+    - CONFIG_REGISTRY: Dict[str, Dict[str, Any]]
+      Maps header keys to their CONFIG dictionaries containing validation rules,
+      status messages, and display metadata.
+
+    - get_all_header_keys() -> List[str]
+      Returns list of all registered header keys (15 total)
+
+    - get_analyzer(header_key) -> Callable
+      Retrieves analyzer function for a specific header
+
+    - get_config(header_key) -> Dict
+      Retrieves configuration dictionary for a specific header
+
+Registry Pattern Benefits:
+    1. **Extensibility**: Add new analyzers by creating a module and adding to registry
+    2. **Decoupling**: analyzer.py doesn't need to import or know about specific headers
+    3. **Consistency**: All analyzers follow the same interface (analyze(value) -> Finding)
+    4. **Maintainability**: Header-specific logic lives in isolated modules
+    5. **Testability**: Each analyzer can be tested independently
+
+Registered Analyzers (15 total):
+    Priority 1 (Critical):
+    - strict-transport-security (HSTS)
+    - content-security-policy (CSP)
+
+    Priority 2 (High):
+    - x-frame-options
+    - referrer-policy
+    - x-content-type-options
+    - set-cookie
+    - cache-control
+    - expect-ct
+
+    Priority 3 (Medium-Low):
+    - x-permitted-cross-domain-policies
+    - x-xss-protection (deprecated)
+    - x-download-options
+    - permissions-policy
+    - cross-origin-embedder-policy (COEP)
+    - cross-origin-opener-policy (COOP)
+    - cross-origin-resource-policy (CORP)
+
+Adding New Analyzers:
+    1. Create analyzer module in sha/analyzers/ (e.g., new_header.py)
+    2. Define HEADER_KEY, CONFIG, and analyze() function
+    3. Import module in this file
+    4. Add to ANALYZER_REGISTRY and CONFIG_REGISTRY dictionaries
+    5. No changes needed to analyzer.py or main.py!
+
+    See: docs/architecture/EXTENSIBILITY.md for step-by-step guide
+
+Related Modules:
+    - sha.analyzer - Loops through ANALYZER_REGISTRY to analyze all headers
+    - sha.analyzers.* - Individual analyzer modules (hsts, csp, etc.)
+    - sha.config - get_header_config() delegates to get_config() here
+
+Example Usage:
+    >>> from sha.analyzers import ANALYZER_REGISTRY, get_all_header_keys
+    >>> len(ANALYZER_REGISTRY)
+    15
+    >>> get_all_header_keys()
+    ['strict-transport-security', 'x-frame-options', ...]
+
+    >>> # Get analyzer for specific header
+    >>> from sha.analyzers import get_analyzer
+    >>> analyze_hsts = get_analyzer("strict-transport-security")
+    >>> finding = analyze_hsts("max-age=31536000")
+    >>> finding["status"]
+    "acceptable"
+
+See Also:
+    - docs/architecture/REGISTRY_PATTERN.md - Registry pattern explained
+    - docs/architecture/EXTENSIBILITY.md - Adding new analyzers
+    - docs/architecture/COMPONENTS.md#analyzer-layer - Architecture overview
 """
 
 from typing import Any, Callable, Dict

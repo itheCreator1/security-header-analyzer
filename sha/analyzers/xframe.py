@@ -1,8 +1,78 @@
 """
-X-Frame-Options Header Analyzer.
+X-Frame-Options Analyzer - Clickjacking protection validation
 
-This module contains configuration and analysis logic for the
-X-Frame-Options header which prevents clickjacking attacks.
+Module: sha.analyzers.xframe
+
+Purpose:
+    Analyzes the X-Frame-Options header to prevent clickjacking attacks by controlling
+    whether the page can be embedded in frames/iframes. Validates the three allowed
+    values (DENY, SAMEORIGIN, ALLOW-FROM) and detects deprecated configurations.
+
+Overview:
+    The X-Frame-Options analyzer enforces clickjacking protection by validating frame
+    embedding policies. It performs case-insensitive value checking, detects the
+    deprecated ALLOW-FROM directive, and recommends modern CSP frame-ancestors as
+    a replacement. The analyzer is straightforward due to the header's simple
+    three-value syntax but critical for preventing UI redressing attacks.
+
+Key Functions:
+    - analyze(value) -> Finding
+      Main analysis function that validates X-Frame-Options value against allowed
+      options (DENY, SAMEORIGIN) and deprecated options (ALLOW-FROM)
+
+Validation Rules:
+    - Missing header: HIGH severity
+    - DENY: GOOD (maximum protection - no embedding allowed)
+    - SAMEORIGIN: ACCEPTABLE, low severity (allows same-origin embedding)
+    - ALLOW-FROM: BAD, high severity (deprecated, use CSP frame-ancestors instead)
+    - Unknown value: BAD, high severity
+
+Attack Scenarios Prevented:
+    - **Clickjacking (UI Redressing)**: Prevents attackers from embedding the page
+      in a malicious iframe and overlaying transparent elements to trick users into
+      clicking on hidden buttons/links (e.g., "Like" button, fund transfer)
+    - **Frame-Based Session Hijacking**: Prevents embedding in iframes that could
+      intercept user interactions or steal session tokens
+    - **Phishing via Iframe Embedding**: Stops attackers from embedding legitimate
+      pages in phishing sites to increase credibility
+
+Configuration:
+    - best_values: DENY (no framing allowed)
+    - acceptable_values: SAMEORIGIN (same-origin framing allowed)
+    - deprecated_values: ALLOW-FROM (replaced by CSP frame-ancestors)
+
+Related Modules:
+    - sha.analyzers.__init__ - Registers xframe.analyze in ANALYZER_REGISTRY
+    - sha.config - Imports STATUS_* constants
+    - docs/headers/X-Frame-Options.md - Detailed header documentation
+
+Example Usage:
+    >>> from sha.analyzers.xframe import analyze
+    >>> # Best practice - no framing
+    >>> finding = analyze("DENY")
+    >>> finding["status"]
+    "good"
+    >>> finding["severity"]
+    "info"
+
+    >>> # Acceptable - same-origin framing
+    >>> finding = analyze("SAMEORIGIN")
+    >>> finding["status"]
+    "acceptable"
+    >>> finding["severity"]
+    "low"
+
+    >>> # Deprecated ALLOW-FROM
+    >>> finding = analyze("ALLOW-FROM https://example.com")
+    >>> finding["status"]
+    "bad"
+    >>> finding["severity"]
+    "high"
+
+See Also:
+    - docs/headers/X-Frame-Options.md - Technical explanation and attack scenarios
+    - docs/headers/CSP.md - Modern frame-ancestors directive as replacement
+    - https://tools.ietf.org/html/rfc7034 - X-Frame-Options specification
 """
 
 from typing import Any, Dict, Optional

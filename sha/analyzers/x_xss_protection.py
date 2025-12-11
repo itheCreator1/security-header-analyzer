@@ -1,10 +1,78 @@
 """
-X-XSS-Protection Header Analyzer.
+X-XSS-Protection Analyzer - Deprecated XSS filter control (recommend disabling)
 
-This module contains configuration and analysis logic for the
-X-XSS-Protection header which was used to control browser XSS filters.
-This header is now deprecated and the modern recommendation is to
-explicitly disable it or use Content-Security-Policy instead.
+Module: sha.analyzers.x_xss_protection
+
+Purpose:
+    Analyzes the X-XSS-Protection header which controlled legacy browser XSS filters.
+    IMPORTANT: This header is DEPRECATED. Modern recommendation is X-XSS-Protection: 0
+    to explicitly disable XSS auditors which can introduce vulnerabilities.
+
+Overview:
+    The X-XSS-Protection analyzer validates the deprecated XSS filter header. While
+    originally designed to enable browser XSS protection, research showed these filters
+    could be weaponized to CREATE vulnerabilities (XSS auditor bypass attacks). Modern
+    best practice is X-XSS-Protection: 0 to disable filters and rely on Content-Security-
+    Policy instead. The analyzer rates value '0' as GOOD (explicit disable), '1; mode=block'
+    as ACCEPTABLE (legacy), and plain '1' as BAD (dangerous).
+
+Key Functions:
+    - analyze(value) -> Finding
+      Main analysis function that validates XSS filter configuration and recommends
+      disabling (value=0) per modern security best practices
+
+Validation Rules:
+    - Missing header: LOW severity (acceptable if using CSP)
+    - 0: GOOD (modern recommendation - explicitly disable XSS auditor)
+    - 1; mode=block: ACCEPTABLE, low severity (legacy approach, outdated)
+    - 1: BAD, MEDIUM severity (dangerous - enables filter without blocking)
+    - Unknown values: BAD, low severity
+
+Attack Scenarios (Why Filters Were Deprecated):
+    - **XSS Filter Bypass Attacks**: Attackers crafted URLs that trigger XSS filters
+      to block legitimate scripts, breaking page functionality or creating new XSS vectors
+    - **Selective Script Blocking**: Attackers use filters to block specific scripts
+      (like CSP nonces) while allowing their malicious payload
+    - **Information Leakage**: Filters can leak information about page content through
+      timing attacks or side-channel observations
+
+Historical Context:
+    - 2010-2018: Browsers implemented XSS auditors (X-XSS-Protection: 1)
+    - 2018-2019: Research revealed filters could be weaponized (XSLeaks)
+    - 2019: Chrome removed XSS Auditor entirely
+    - 2020: Edge removed XSS filter
+    - Modern: All major browsers removed/never had XSS auditors
+    - Recommendation: Explicitly set to 0, use CSP for XSS protection
+
+Configuration:
+    - best_value: '0' (disable XSS auditor - modern recommendation)
+    - acceptable_value: '1; mode=block' (legacy mode, outdated)
+    - bad_value: '1' (enables filter without blocking - dangerous)
+
+Related Modules:
+    - sha.analyzers.__init__ - Registers analyzer in ANALYZER_REGISTRY
+    - sha.analyzers.csp - Modern XSS protection via Content-Security-Policy
+    - sha.config - Imports STATUS_* constants
+    - docs/headers/X-XSS-Protection.md - Detailed deprecation history
+
+Example Usage:
+    >>> from sha.analyzers.x_xss_protection import analyze
+    >>> # Modern recommendation - explicitly disable
+    >>> finding = analyze("0")
+    >>> finding["status"]
+    "good"
+
+    >>> # Dangerous - enables filter without blocking
+    >>> finding = analyze("1")
+    >>> finding["status"]
+    "bad"
+    >>> finding["severity"]
+    "medium"
+
+See Also:
+    - docs/headers/X-XSS-Protection.md - Why filters were deprecated
+    - docs/headers/CSP.md - Modern XSS protection replacement
+    - https://owasp.org/www-community/attacks/xss/
 """
 
 from typing import Any, Dict, Optional

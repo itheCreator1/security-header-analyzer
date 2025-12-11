@@ -1,8 +1,83 @@
 """
-HSTS (Strict-Transport-Security) Header Analyzer.
+HSTS Analyzer - Strict-Transport-Security header validation
 
-This module contains configuration and analysis logic for the
-Strict-Transport-Security header which enforces HTTPS connections.
+Module: sha.analyzers.hsts
+
+Purpose:
+    Analyzes the Strict-Transport-Security (HSTS) header to ensure proper
+    enforcement of HTTPS connections. Validates max-age duration, includeSubDomains
+    directive, and preload eligibility according to IETF RFC 6797 and best practices.
+
+Overview:
+    The HSTS analyzer enforces critical security requirements to prevent SSL
+    stripping and man-in-the-middle attacks. It parses the HSTS header value,
+    extracts max-age and directive flags, and evaluates the configuration against
+    Mozilla Observatory and OWASP recommendations. The analyzer assigns severity
+    levels based on max-age duration and subdomain protection coverage.
+
+Key Functions:
+    - analyze(value) -> Finding
+      Main analysis function returning status, severity, message, and recommendations
+
+    - parse_hsts(value) -> Dict[str, Any]
+      Parses HSTS header into components: max_age (int), include_subdomains (bool),
+      preload (bool). Uses regex for max-age extraction and case-insensitive checks.
+
+Validation Rules:
+    - Missing header: CRITICAL severity
+    - max-age < 10886400 (126 days): BAD, CRITICAL severity
+    - max-age >= 10886400 + includeSubDomains + preload: GOOD, info severity
+    - max-age >= 10886400 + includeSubDomains: ACCEPTABLE, low severity
+    - max-age >= 10886400 only: ACCEPTABLE, medium severity (warn about subdomains)
+
+Attack Scenarios Prevented:
+    - **SSL Stripping**: Forces browsers to upgrade all HTTP requests to HTTPS,
+      preventing attackers from downgrading connections to intercept traffic
+    - **Man-in-the-Middle**: With includeSubDomains, prevents MITM attacks on
+      subdomains that might not have valid certificates
+    - **Cookie Hijacking**: Ensures session cookies are always transmitted over
+      encrypted connections, preventing session theft
+    - **First Visit Vulnerability**: With preload, protects even the first visit
+      by embedding HSTS policy in browser preload lists
+
+Configuration:
+    - min_max_age: 10886400 seconds (126 days minimum per RFC 6797)
+    - best_max_age: 31536000 seconds (1 year, recommended by Mozilla)
+    - required_directives: includeSubDomains (protects all subdomains)
+    - recommended_directives: preload (eligibility for browser preload lists)
+
+Related Modules:
+    - sha.analyzers.__init__ - Registers hsts.analyze in ANALYZER_REGISTRY
+    - sha.config - Imports STATUS_* constants and severity levels
+    - docs/headers/HSTS.md - Detailed header documentation
+
+Example Usage:
+    >>> from sha.analyzers.hsts import analyze, parse_hsts
+    >>> # Perfect HSTS configuration
+    >>> finding = analyze("max-age=31536000; includeSubDomains; preload")
+    >>> finding["status"]
+    "good"
+    >>> finding["severity"]
+    "info"
+
+    >>> # Parse header components
+    >>> parsed = parse_hsts("max-age=31536000; includeSubDomains")
+    >>> parsed["max_age"]
+    31536000
+    >>> parsed["include_subdomains"]
+    True
+
+    >>> # Weak configuration (too short max-age)
+    >>> finding = analyze("max-age=3600")
+    >>> finding["status"]
+    "bad"
+    >>> finding["severity"]
+    "critical"
+
+See Also:
+    - docs/headers/HSTS.md - Technical explanation and attack scenarios
+    - docs/architecture/EXTENSIBILITY.md - How analyzers integrate with registry
+    - https://tools.ietf.org/html/rfc6797 - HSTS RFC specification
 """
 
 import re

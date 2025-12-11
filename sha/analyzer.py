@@ -1,8 +1,60 @@
 """
-Analyzer module for Security Header Analyzer.
+Analyzer Layer - Coordinates header analysis across all registered analyzers
 
-This module provides the main analyze_headers function that coordinates
-analysis across all registered security header analyzers.
+Module: sha.analyzer
+
+Purpose:
+    Provides the analyze_headers() function that orchestrates analysis across all
+    registered security header analyzers using the registry pattern. This module
+    acts as the central dispatcher that loops through all known headers and
+    aggregates their findings.
+
+Overview:
+    The analyzer module implements the registry pattern to dynamically dispatch
+    header values to appropriate analyzer functions. It maintains no header-specific
+    logic itself - all validation rules live in individual analyzer modules under
+    sha/analyzers/. This design makes the system highly extensible: adding a new
+    header requires zero changes to this file.
+
+Key Functions:
+    - analyze_headers(headers: Dict) -> List[Finding]
+      Main entry point that coordinates analysis across all registered analyzers.
+      Loops through ANALYZER_REGISTRY, calls each analyzer, aggregates findings.
+
+Data Structures:
+    - Finding: Dict[str, Any]
+      TypedDict-style dictionary containing: header_name, status, severity,
+      message, actual_value, recommendation
+
+Pattern Implementation:
+    Uses ANALYZER_REGISTRY from sha.analyzers to dynamically dispatch:
+    for header_key, analyze_func in ANALYZER_REGISTRY.items():
+        value = headers.get(header_key)
+        finding = analyze_func(value)  # Call registered analyzer
+        findings.append(finding)
+
+Related Modules:
+    - sha.analyzers - Contains ANALYZER_REGISTRY and all analyzer implementations
+    - sha.fetcher - Provides headers input for analysis
+    - sha.reporter - Consumes findings output for report generation
+    - sha.main - Orchestrates the overall workflow
+
+Example Usage:
+    >>> from sha.analyzer import analyze_headers
+    >>> headers = {
+    ...     "strict-transport-security": "max-age=31536000",
+    ...     "x-frame-options": "DENY"
+    ... }
+    >>> findings = analyze_headers(headers)
+    >>> len(findings)  # Returns findings for all 15 registered headers
+    15
+    >>> findings[0]["header_name"]
+    'Strict-Transport-Security'
+
+See Also:
+    - docs/architecture/COMPONENTS.md#analyzer-layer - Architecture details
+    - docs/architecture/REGISTRY_PATTERN.md - Registry pattern explained
+    - docs/API.md#analyzer-module - API reference
 """
 
 from typing import Any, Dict, List, Union

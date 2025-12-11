@@ -1,8 +1,105 @@
 """
-Content-Security-Policy Header Analyzer.
+CSP Analyzer - Content-Security-Policy header validation
 
-This module contains configuration and analysis logic for the
-Content-Security-Policy header which prevents XSS and injection attacks.
+Module: sha.analyzers.csp
+
+Purpose:
+    Analyzes the Content-Security-Policy (CSP) header to prevent Cross-Site
+    Scripting (XSS) and code injection attacks. Validates directive structure,
+    detects dangerous patterns (unsafe-inline, wildcards), and evaluates overall
+    policy restrictiveness according to W3C CSP3 specification and OWASP best practices.
+
+Overview:
+    The CSP analyzer is the most complex header analyzer due to CSP's directive-based
+    structure and numerous security implications. It parses the semicolon-delimited
+    policy into directives, checks for dangerous patterns (unsafe-inline, unsafe-eval,
+    wildcards), validates source lists, detects nonces/hashes/strict-dynamic, and
+    evaluates restrictiveness. The analyzer provides granular feedback on specific
+    directives that weaken security and suggests concrete improvements.
+
+Key Functions:
+    - analyze(value) -> Finding
+      Main analysis function that orchestrates all validation checks and returns
+      comprehensive finding with aggregated security warnings
+
+    - parse_csp(value) -> Dict[str, List[str]]
+      Parses CSP into directive-value mapping (e.g., {"script-src": ["'self'", "cdn.example.com"]})
+
+    - check_csp_dangerous_patterns(directives, config) -> List[Dict]
+      Detects dangerous patterns like unsafe-inline, unsafe-eval, wildcards in script-src.
+      Returns list of pattern findings sorted by severity (critical → high → medium)
+
+    - has_nonces_or_hashes(directive_values) -> bool
+      Checks for nonces ('nonce-XXX') or hashes ('sha256-XXX') which make unsafe-inline safe
+
+    - has_strict_dynamic(directive_values) -> bool
+      Checks for 'strict-dynamic' (modern CSP3 pattern for script whitelisting)
+
+    - check_csp_restrictive_default(directives, config) -> bool
+      Validates if default-src is restrictive ('self' or 'none')
+
+    - check_csp_security_directives(directives, config) -> bool
+      Checks for important security directives (frame-ancestors, base-uri, form-action)
+
+Validation Rules:
+    - Missing header: CRITICAL severity
+    - Dangerous patterns found (unsafe-inline without nonces, wildcards): BAD with HIGH severity
+    - Unsafe-eval in script-src: BAD with MEDIUM severity
+    - Restrictive default + security directives: GOOD, info severity
+    - Restrictive default OR 3+ directives: ACCEPTABLE, low severity
+    - Weak policy (<3 directives, no restrictive default): ACCEPTABLE, medium severity
+
+Attack Scenarios Prevented:
+    - **Cross-Site Scripting (XSS)**: Blocks execution of injected malicious scripts
+      by whitelisting allowed script sources
+    - **Data Injection**: Prevents attackers from loading malicious resources (images,
+      stylesheets, iframes) from untrusted sources
+    - **Clickjacking**: frame-ancestors directive controls which sites can embed pages
+      in iframes
+    - **Form Hijacking**: form-action directive restricts form submission destinations
+    - **Base Tag Injection**: base-uri directive prevents attackers from changing base
+      URL to redirect relative URLs to malicious sites
+
+Dangerous Patterns:
+    - unsafe-inline in script-src: Allows inline scripts, defeating XSS protection
+      (OK if nonces/hashes/strict-dynamic present, as they override it)
+    - unsafe-eval: Allows eval(), setTimeout(string), Function() constructor
+    - Wildcards in script-src (*,data:, http:, https:): Allow scripts from any source
+    - Wildcard default-src (*): Allows any resource type from any source
+
+Configuration:
+    - dangerous_patterns: Patterns that indicate insecure CSP (unsafe-inline, wildcards)
+    - good_patterns: Restrictive defaults ('self', 'none'), security directives
+    - security_directives: frame-ancestors, base-uri, form-action
+
+Related Modules:
+    - sha.analyzers.__init__ - Registers csp.analyze in ANALYZER_REGISTRY
+    - sha.config - Imports STATUS_* constants
+    - docs/headers/CSP.md - Detailed CSP documentation with examples
+
+Example Usage:
+    >>> from sha.analyzers.csp import analyze, parse_csp
+    >>> # Strong CSP with restrictive policy
+    >>> finding = analyze("default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'")
+    >>> finding["status"]
+    "good"
+
+    >>> # Parse CSP into directives
+    >>> parsed = parse_csp("default-src 'self'; script-src 'self' cdn.example.com")
+    >>> parsed["script-src"]
+    ["'self'", "cdn.example.com"]
+
+    >>> # Dangerous CSP with unsafe-inline
+    >>> finding = analyze("script-src 'unsafe-inline'")
+    >>> finding["status"]
+    "bad"
+    >>> finding["severity"]
+    "high"
+
+See Also:
+    - docs/headers/CSP.md - Technical explanation and attack scenarios
+    - docs/architecture/COMPONENTS.md#analyzer-layer - Analyzer architecture
+    - https://www.w3.org/TR/CSP3/ - CSP Level 3 specification
 """
 
 from typing import Any, Dict, List, Optional

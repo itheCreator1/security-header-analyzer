@@ -1,11 +1,111 @@
 """
-Set-Cookie Header Analyzer.
+Set-Cookie Analyzer - Cookie security attributes validation
 
-This module contains configuration and analysis logic for the
-Set-Cookie header which controls cookie security attributes.
+Module: sha.analyzers.set_cookie
 
-Note: This analyzer handles multiple Set-Cookie headers. When multiple
-cookies are set, all are analyzed and the worst security status is reported.
+Purpose:
+    Analyzes Set-Cookie headers to validate security attributes (Secure, HttpOnly,
+    SameSite) that protect cookies from theft and misuse. Handles multiple cookies,
+    parses attributes, and reports worst-case security status across all cookies.
+
+Overview:
+    The Set-Cookie analyzer is unique in handling multiple header instances (HTTP
+    allows multiple Set-Cookie headers in one response). It parses each cookie's
+    attributes (Secure, HttpOnly, SameSite, Max-Age, Domain, Path), validates
+    security properties, and aggregates findings across all cookies. The analyzer
+    detects missing security attributes, validates SameSite=None requires Secure,
+    and warns about excessive Max-Age durations. Special handling for list-valued
+    headers from fetcher.py.
+
+Key Functions:
+    - analyze(value) -> Finding
+      Main analysis function that handles single cookie string, list of cookies,
+      or None. Returns aggregated finding with worst security status.
+
+    - parse_set_cookie(value) -> Dict[str, Any]
+      Parses single Set-Cookie header into attributes (cookie_name, cookie_value,
+      secure, httponly, samesite, max_age, expires, domain, path)
+
+    - _analyze_single_cookie(value) -> Dict[str, Any]
+      Internal function analyzing one cookie and returning per-cookie results
+      (status, severity, issues, recommendations)
+
+Validation Rules:
+    - Missing header: INFO severity (not all responses set cookies - optional)
+    - Missing Secure: BAD, HIGH severity (cookie sent over HTTP - session hijack)
+    - Missing HttpOnly: BAD, HIGH severity (XSS can steal cookie)
+    - Missing SameSite: BAD, MEDIUM severity (CSRF attacks possible)
+    - SameSite=None without Secure: BAD, MEDIUM severity (invalid configuration)
+    - Max-Age >1 year: ACCEPTABLE, LOW severity (warn about excessive duration)
+    - Secure + HttpOnly + SameSite=Strict: GOOD, info severity
+    - Secure + HttpOnly + SameSite=Lax: ACCEPTABLE, low severity
+
+Attack Scenarios Prevented:
+    - **Session Hijacking (Secure)**: Without Secure attribute, cookies sent over
+      HTTP can be intercepted by network attackers (MITM, public Wi-Fi)
+    - **Cookie Theft via XSS (HttpOnly)**: Without HttpOnly, JavaScript can access
+      cookies (document.cookie), allowing XSS attacks to steal session tokens
+    - **Cross-Site Request Forgery (SameSite)**: Without SameSite, browsers send
+      cookies on cross-site requests, allowing CSRF attacks where attacker sites
+      make authenticated requests to victim site
+    - **SameSite=None Misconfiguration**: SameSite=None without Secure is rejected
+      by browsers, breaking third-party cookie functionality
+
+Cookie Attribute Details:
+    - **Secure**: Cookie only sent over HTTPS connections (required for security)
+    - **HttpOnly**: Cookie not accessible via JavaScript document.cookie (XSS protection)
+    - **SameSite**:
+      * Strict: Never sent on cross-site requests (maximum CSRF protection)
+      * Lax: Sent on top-level navigations only (good balance)
+      * None: Sent on all cross-site requests (requires Secure attribute)
+    - **Max-Age**: Cookie lifetime in seconds (warn if >1 year for sensitive data)
+    - **Domain**: Cookie scope (security implications, not validated here)
+    - **Path**: URL path scope (security implications, not validated here)
+
+Configuration:
+    - required_secure: True (Secure attribute required)
+    - required_httponly: True (HttpOnly attribute required)
+    - max_age_warning_threshold: 31536000 (1 year - warn if exceeded)
+    - samesite_strict: Strictest policy (recommended for authentication cookies)
+    - samesite_lax: Good balance (acceptable for most use cases)
+    - samesite_none: Requires Secure (for third-party cookies)
+
+Related Modules:
+    - sha.analyzers.__init__ - Registers set_cookie.analyze in ANALYZER_REGISTRY
+    - sha.fetcher - Provides cookies as list (multiple Set-Cookie headers captured)
+    - sha.config - Imports STATUS_* constants
+    - docs/headers/Set-Cookie.md - Detailed cookie security documentation
+
+Example Usage:
+    >>> from sha.analyzers.set_cookie import analyze, parse_set_cookie
+    >>> # Perfect cookie configuration
+    >>> finding = analyze("session=abc123; Secure; HttpOnly; SameSite=Strict; Max-Age=86400")
+    >>> finding["status"]
+    "good"
+    >>> finding["cookie_count"]
+    1
+
+    >>> # Multiple cookies (worst status reported)
+    >>> finding = analyze([
+    ...     "session=abc123; Secure; HttpOnly; SameSite=Strict",
+    ...     "csrf=xyz; Secure"  # Missing HttpOnly
+    ... ])
+    >>> finding["status"]
+    "bad"
+    >>> finding["cookie_count"]
+    2
+
+    >>> # Parse cookie attributes
+    >>> parsed = parse_set_cookie("session=abc123; Secure; HttpOnly; SameSite=Strict")
+    >>> parsed["secure"]
+    True
+    >>> parsed["samesite"]
+    "Strict"
+
+See Also:
+    - docs/headers/Set-Cookie.md - Technical explanation and attack scenarios
+    - docs/architecture/COMPONENTS.md#analyzer-layer - Multi-header handling
+    - https://tools.ietf.org/html/rfc6265 - HTTP State Management (cookies)
 """
 
 from typing import Any, Dict, List, Optional, Union

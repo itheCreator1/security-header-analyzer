@@ -1,8 +1,78 @@
 """
-Reporter module for Security Header Analyzer.
+Reporter Layer - Formats analysis findings into human-readable or JSON reports
 
-This module generates formatted reports from security header analysis findings.
-Supports both human-readable text output and JSON output for automation.
+Module: sha.reporter
+
+Purpose:
+    Generates formatted reports from security header analysis findings. Supports
+    both human-readable text output for terminal display and JSON output for
+    automation/CI-CD integration.
+
+Overview:
+    The reporter module takes the raw list of findings from the analyzer and
+    transforms them into polished output. For text mode, it creates a structured
+    report with summary statistics, severity-ordered findings, and clear formatting.
+    For JSON mode, it serializes findings with metadata (URL, timestamp) for
+    programmatic consumption. All report generation is purely functional with no
+    side effects.
+
+Key Functions:
+    - generate_report(url, findings, format) -> str
+      Main entry point supporting both "text" and "json" output formats
+
+    - format_text_report(findings, url) -> str
+      Creates human-readable terminal output with headers, summaries, and findings
+
+    - format_json_report(findings, url) -> str
+      Serializes findings to JSON with metadata
+
+    - calculate_summary(findings) -> Dict[str, int]
+      Counts issues by severity level (critical, high, medium, low, info)
+
+    - sort_findings_by_severity(findings) -> List[Finding]
+      Orders findings from critical → high → medium → low → info using SEVERITY_RANK
+
+Text Report Format:
+    ======================================================================
+    SECURITY HEADER ANALYSIS REPORT
+    ======================================================================
+
+    URL: https://example.com
+    Timestamp: 2025-12-12T10:00:00.000Z
+
+    SUMMARY
+    ----------------------------------------------------------------------
+    Critical Issues: 0
+    High Issues:     2
+    ...
+
+    DETAILED FINDINGS
+    ----------------------------------------------------------------------
+    [High] Strict-Transport-Security
+    Status: missing
+    ...
+
+Related Modules:
+    - sha.analyzer - Provides findings input for formatting
+    - sha.main - Calls generate_report() to produce final output
+    - sha.config - Severity levels and status constants
+
+Example Usage:
+    >>> from sha.reporter import generate_report
+    >>> findings = [...]  # From analyzer
+    >>> text_report = generate_report("https://example.com", findings, "text")
+    >>> print(text_report)  # Human-readable output
+
+    >>> json_report = generate_report("https://example.com", findings, "json")
+    >>> import json
+    >>> data = json.loads(json_report)
+    >>> data["summary"]["high"]
+    2
+
+See Also:
+    - docs/architecture/COMPONENTS.md#reporter-layer - Architecture details
+    - docs/API.md#reporter-module - API reference
+    - docs/USAGE.md#output-formats - Output format examples
 """
 
 import json

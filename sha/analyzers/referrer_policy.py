@@ -1,8 +1,91 @@
 """
-Referrer-Policy Header Analyzer.
+Referrer-Policy Analyzer - Referrer information leakage control
 
-This module contains configuration and analysis logic for the
-Referrer-Policy header which controls referrer information leakage.
+Module: sha.analyzers.referrer_policy
+
+Purpose:
+    Analyzes the Referrer-Policy header to control how much referrer information
+    (originating page URL) is sent with outgoing requests. Validates policy values
+    for privacy protection and prevents leakage of sensitive URL parameters.
+
+Overview:
+    The Referrer-Policy analyzer evaluates privacy protection levels of different
+    referrer policies. It categorizes policies into best (strict-origin, no-referrer),
+    acceptable (strict-origin-when-cross-origin, same-origin), and bad (unsafe-url,
+    no-referrer-when-downgrade). The analyzer handles comma-separated fallback values
+    and provides recommendations for upgrading to more restrictive policies.
+
+Key Functions:
+    - analyze(value) -> Finding
+      Main analysis function that validates referrer policy value and categorizes
+      it by privacy protection strength
+
+Validation Rules:
+    - Missing header: HIGH severity
+    - Best values (strict-origin, no-referrer): GOOD, info severity (strongest privacy)
+    - Acceptable values (strict-origin-when-cross-origin, same-origin, origin,
+      origin-when-cross-origin): ACCEPTABLE, low severity
+    - Bad values (unsafe-url, no-referrer-when-downgrade): BAD, high severity
+    - Unknown value: BAD, high severity
+
+Attack Scenarios Prevented:
+    - **Sensitive URL Parameter Leakage**: Prevents leaking tokens, session IDs,
+      or other sensitive data in URL query parameters to third-party sites
+      (e.g., ?reset_token=abc123, ?api_key=secret)
+    - **Privacy Violations**: Protects user privacy by not revealing full browsing
+      history to external sites through referrer headers
+    - **Analytics Tracking**: Limits cross-site tracking capabilities by restricting
+      what origin information is shared
+    - **HTTPS→HTTP Downgrade Leakage**: With strict-origin, prevents sending
+      referrer when downgrading from HTTPS to HTTP
+
+Policy Privacy Levels:
+    - **no-referrer**: Never send referrer (maximum privacy)
+    - **strict-origin**: Only send origin on same security level (HTTPS→HTTPS)
+    - **strict-origin-when-cross-origin**: Full URL for same-origin, origin for cross-origin
+    - **same-origin**: Full URL for same-origin only, nothing for cross-origin
+    - **origin**: Always send origin only (no path/query)
+    - **unsafe-url**: Always send full URL (including to HTTP) - **BAD**
+    - **no-referrer-when-downgrade**: Send full URL except on HTTPS→HTTP - **BAD**
+
+Configuration:
+    - best_values: strict-origin, no-referrer (strongest privacy)
+    - acceptable_values: strict-origin-when-cross-origin, same-origin, origin,
+      origin-when-cross-origin
+    - bad_values: unsafe-url, no-referrer-when-downgrade
+
+Related Modules:
+    - sha.analyzers.__init__ - Registers referrer_policy.analyze in ANALYZER_REGISTRY
+    - sha.config - Imports STATUS_* constants
+    - docs/headers/Referrer-Policy.md - Detailed header documentation
+
+Example Usage:
+    >>> from sha.analyzers.referrer_policy import analyze
+    >>> # Best practice - strict-origin
+    >>> finding = analyze("strict-origin")
+    >>> finding["status"]
+    "good"
+    >>> finding["severity"]
+    "info"
+
+    >>> # Acceptable - good balance
+    >>> finding = analyze("strict-origin-when-cross-origin")
+    >>> finding["status"]
+    "acceptable"
+    >>> finding["severity"]
+    "low"
+
+    >>> # Bad - unsafe policy
+    >>> finding = analyze("unsafe-url")
+    >>> finding["status"]
+    "bad"
+    >>> finding["severity"]
+    "high"
+
+See Also:
+    - docs/headers/Referrer-Policy.md - Technical explanation and attack scenarios
+    - docs/architecture/EXTENSIBILITY.md - Adding new analyzers
+    - https://w3c.github.io/webappsec-referrer-policy/ - Referrer Policy specification
 """
 
 from typing import Any, Dict, Optional

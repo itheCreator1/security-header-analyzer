@@ -1,9 +1,68 @@
 """
-X-Download-Options Header Analyzer.
+X-Download-Options Analyzer - IE download security (legacy)
 
-This module contains configuration and analysis logic for the
-X-Download-Options header which prevents Internet Explorer from
-executing downloaded HTML files in the site's security context.
+Module: sha.analyzers.x_download_options
+
+Purpose:
+    Analyzes the X-Download-Options header which prevents Internet Explorer (IE) from
+    executing downloaded HTML files in the site's security context. Legacy header
+    specific to IE/Edge (pre-Chromium) to prevent "Open" button security issues.
+
+Overview:
+    The X-Download-Options analyzer validates the IE-specific 'noopen' directive that
+    prevents downloads from being opened directly in the browser security context. This
+    simple analyzer checks for a single valid value ('noopen', case-insensitive) and
+    flags missing or incorrect values. While IE is deprecated (June 2022), the header
+    remains useful for defense-in-depth and legacy browser support.
+
+Key Functions:
+    - analyze(value) -> Finding
+      Main analysis function that validates X-Download-Options is set to 'noopen'
+
+Validation Rules:
+    - Missing header: LOW severity (IE-specific, browser deprecated)
+    - noopen (case-insensitive): GOOD, info severity
+    - Any other value: BAD, low severity
+    - Empty value: BAD, low severity
+
+Attack Scenario Prevented:
+    - **IE Download Context Execution**: In IE, when users download HTML files, they
+      can click "Open" button which executes the HTML in the SITE'S security context
+      (not local file context), granting access to site cookies/localStorage
+    - **Download-and-Execute XSS**: Attacker uploads malicious HTML to file upload
+      feature, victim downloads and clicks "Open", HTML executes with site privileges
+
+IE Deprecation Status:
+    - Internet Explorer 11 reached end-of-life June 15, 2022
+    - IE mode in Edge continues for enterprise compatibility
+    - However, header still valuable for:
+      * Defense-in-depth strategy
+      * Legacy enterprise environments
+      * Security scanning compliance
+
+Configuration:
+    - required_value: 'noopen' (only valid value, case-insensitive)
+
+Related Modules:
+    - sha.analyzers.__init__ - Registers analyzer in ANALYZER_REGISTRY
+    - sha.config - Imports STATUS_* constants
+    - docs/headers/X-Download-Options.md - Detailed IE security documentation
+
+Example Usage:
+    >>> from sha.analyzers.x_download_options import analyze
+    >>> # Correct configuration
+    >>> finding = analyze("noopen")
+    >>> finding["status"]
+    "good"
+
+    >>> # Wrong value
+    >>> finding = analyze("open")
+    >>> finding["status"]
+    "bad"
+
+See Also:
+    - docs/headers/X-Download-Options.md - IE-specific attack scenarios
+    - docs/architecture/EXTENSIBILITY.md - Adding new analyzers
 """
 
 from typing import Any, Dict, Optional

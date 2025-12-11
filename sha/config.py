@@ -1,8 +1,70 @@
 """
-Configuration module for Security Header Analyzer.
+Configuration Module - Shared constants and exceptions
 
-This module defines shared constants and exceptions used throughout the application.
-Individual header configurations have been moved to their respective analyzer modules.
+Module: sha.config
+
+Purpose:
+    Centralizes all configuration constants and custom exception classes used
+    throughout the Security Header Analyzer. This includes HTTP request settings,
+    SSRF protection IP ranges, severity levels, status constants, and the exception
+    hierarchy for error handling.
+
+Overview:
+    This module serves as the single source of truth for configuration values that
+    are shared across multiple modules. Individual header-specific configurations
+    (validation rules, messages) live in their respective analyzer modules, while
+    global system configuration lives here. The exception hierarchy provides
+    structured error handling with appropriate exit code mapping in main.py.
+
+Key Constants:
+    HTTP Configuration:
+    - DEFAULT_TIMEOUT: int = 10 seconds
+    - DEFAULT_MAX_REDIRECTS: int = 5
+    - DEFAULT_USER_AGENT: str (includes version and repo URL)
+
+    SSRF Protection:
+    - PRIVATE_IP_RANGES: List[str] (IPv4 and IPv6 private/loopback ranges)
+    - LOCALHOST_NAMES: Set[str] (localhost, 0.0.0.0)
+
+    Severity System:
+    - SEVERITY_LEVELS: List[str] (ordered: critical → high → medium → low → info)
+    - SEVERITY_RANK: Dict[str, int] (for sorting findings)
+
+    Status Constants:
+    - STATUS_GOOD, STATUS_ACCEPTABLE, STATUS_BAD, STATUS_MISSING
+
+Exception Classes:
+    - SecurityHeaderAnalyzerError (base class)
+      ├── NetworkError (timeout, connection, SSL) → exit code 1
+      ├── InvalidURLError (malformed URL, SSRF) → exit code 2
+      └── HTTPError (4xx, 5xx responses) → exit code 3
+
+Security Considerations:
+    SSRF Protection IP Ranges:
+    - 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 (IPv4 private)
+    - 169.254.0.0/16 (link-local, AWS metadata endpoint)
+    - ::1/128, fc00::/7, fe80::/10 (IPv6 loopback/private/link-local)
+
+Related Modules:
+    - sha.fetcher - Uses HTTP config and SSRF protection constants
+    - sha.main - Uses exception classes for error handling and exit codes
+    - sha.analyzer - Uses severity levels and status constants
+    - sha.analyzers.* - Use status constants in their CONFIG dictionaries
+
+Example Usage:
+    >>> from sha.config import DEFAULT_TIMEOUT, PRIVATE_IP_RANGES
+    >>> print(DEFAULT_TIMEOUT)
+    10
+    >>> len(PRIVATE_IP_RANGES)
+    8
+
+    >>> from sha.config import NetworkError
+    >>> raise NetworkError("Connection timeout")
+
+See Also:
+    - docs/architecture/COMPONENTS.md#configuration-module - Architecture details
+    - docs/architecture/SECURITY.md#ssrf-protection - SSRF protection explained
+    - SECURITY.md - Security considerations and known limitations
 """
 
 from typing import Any, Dict, List

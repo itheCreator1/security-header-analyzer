@@ -1,8 +1,78 @@
 """
-X-Content-Type-Options Header Analyzer.
+X-Content-Type-Options Analyzer - MIME sniffing protection
 
-This module contains configuration and analysis logic for the
-X-Content-Type-Options header which prevents MIME-type sniffing attacks.
+Module: sha.analyzers.content_type
+
+Purpose:
+    Analyzes the X-Content-Type-Options header to prevent MIME-type sniffing
+    attacks where browsers ignore declared Content-Type and guess content type
+    from file contents, potentially executing malicious scripts.
+
+Overview:
+    The X-Content-Type-Options analyzer enforces the simple 'nosniff' directive
+    that prevents browsers from MIME-sniffing responses. This is a straightforward
+    analyzer with a single valid value but critical importance for preventing
+    content-type confusion attacks. Validates presence and correctness of the
+    header value using case-insensitive comparison.
+
+Key Functions:
+    - analyze(value) -> Finding
+      Main analysis function that validates X-Content-Type-Options value is 'nosniff'
+
+Validation Rules:
+    - Missing header: MEDIUM-HIGH severity
+    - Value == 'nosniff' (case-insensitive): GOOD, info severity
+    - Any other value: BAD, medium-high severity
+
+Attack Scenarios Prevented:
+    - **MIME Sniffing Attacks**: Prevents browsers from ignoring declared Content-Type
+      and guessing content type from file contents, which can turn uploaded images
+      into executed HTML/JavaScript
+    - **Content-Type Confusion**: Stops attackers from uploading malicious files
+      (e.g., polyglot files that are both valid images and HTML) that execute
+      as scripts despite being served with image/* Content-Type
+    - **XSS via File Upload**: In file upload scenarios, prevents uploaded SVG or
+      HTML files from being interpreted as scripts even if served with wrong MIME type
+
+Example Attack Without This Header:
+    1. Attacker uploads malicious.jpg containing <script>alert('XSS')</script>
+    2. Server serves file with Content-Type: image/jpeg
+    3. Without nosniff, browser detects HTML content and executes script
+    4. With nosniff, browser respects Content-Type and displays as image
+
+Configuration:
+    - required_value: 'nosniff' (only valid value, case-insensitive)
+
+Related Modules:
+    - sha.analyzers.__init__ - Registers content_type.analyze in ANALYZER_REGISTRY
+    - sha.config - Imports STATUS_* constants
+    - docs/headers/X-Content-Type-Options.md - Detailed header documentation
+
+Example Usage:
+    >>> from sha.analyzers.content_type import analyze
+    >>> # Correct configuration
+    >>> finding = analyze("nosniff")
+    >>> finding["status"]
+    "good"
+    >>> finding["severity"]
+    "info"
+
+    >>> # Case-insensitive check
+    >>> finding = analyze("NOSNIFF")
+    >>> finding["status"]
+    "good"
+
+    >>> # Wrong value
+    >>> finding = analyze("sniff")
+    >>> finding["status"]
+    "bad"
+    >>> finding["severity"]
+    "medium-high"
+
+See Also:
+    - docs/headers/X-Content-Type-Options.md - Technical explanation and attack scenarios
+    - docs/architecture/EXTENSIBILITY.md - Adding new analyzers
+    - https://fetch.spec.whatwg.org/#x-content-type-options-header - Specification
 """
 
 from typing import Any, Dict, Optional

@@ -1,9 +1,95 @@
 """
-Permissions-Policy Header Analyzer.
+Permissions-Policy Analyzer - Browser feature/API control
 
-This module contains configuration and analysis logic for the
-Permissions-Policy header (formerly Feature-Policy) which controls
-browser features and APIs.
+Module: sha.analyzers.permissions_policy
+
+Purpose:
+    Analyzes the Permissions-Policy header (formerly Feature-Policy) to control which
+    browser features and APIs can be accessed. Validates restrictions on sensitive
+    features (camera, microphone, geolocation, payment, USB, etc.) to prevent
+    unauthorized access and reduce attack surface.
+
+Overview:
+    The Permissions-Policy analyzer parses comma-separated feature directives, validates
+    restrictions on 7 sensitive features, and evaluates policy strictness. It checks for
+    restrictive values (empty allowlist '()' or 'self' only) versus permissive wildcards.
+    The analyzer recognizes that Permissions-Policy is crucial for privacy (camera,
+    microphone, geolocation) and security (USB, serial, bluetooth access).
+
+Key Functions:
+    - analyze(value) -> Finding
+      Main analysis function that parses policy, counts restricted sensitive features,
+      and determines overall security posture (good if >=3 restricted, bad if wildcards)
+
+    - parse_permissions_policy(value) -> Dict[str, str]
+      Parses Permissions-Policy into feature→allowlist mapping
+      (e.g., {"camera": "()", "microphone": "(self)"})
+
+Validation Rules:
+    - Missing header: HIGH severity (modern feature, important for privacy)
+    - Restricts >=3 sensitive features with ()/self, no wildcards: GOOD, info severity
+    - Has sensitive features with * wildcard: BAD, HIGH severity
+    - Some restrictions (1-2 features): ACCEPTABLE, low severity
+    - No sensitive restrictions: ACCEPTABLE, medium severity
+
+Attack Scenarios Prevented:
+    - **Malicious Camera/Microphone Access**: Prevents embedded third-party iframes
+      from accessing webcam/microphone without explicit permission (e.g., ad iframes
+      recording users)
+    - **Geolocation Tracking**: Blocks unauthorized location tracking by embedded
+      content (tracking users without consent)
+    - **USB/Bluetooth Device Access**: Prevents malicious scripts from accessing
+      connected hardware devices (keyboards, security keys, printers)
+    - **Payment Handler Hijacking**: Restricts which origins can register as payment
+      handlers, preventing payment interception
+
+Sensitive Features Tracked:
+    - **camera**: Webcam access (privacy concern)
+    - **microphone**: Audio recording (privacy/surveillance)
+    - **geolocation**: User location tracking (privacy)
+    - **payment**: Payment Request API (financial security)
+    - **usb**: USB device access (security concern)
+    - **serial**: Serial port access (hardware security)
+    - **bluetooth**: Bluetooth device pairing (hardware security)
+
+Policy Syntax:
+    - feature=(): Deny to all origins (most restrictive)
+    - feature=(self): Allow only same origin
+    - feature=(self "https://example.com"): Allow self + specific origins
+    - feature=*: Allow all origins (DANGEROUS - flagged as bad)
+
+Configuration:
+    - sensitive_features: 7 critical features to check (camera, mic, geo, payment, usb, serial, bluetooth)
+    - restrictive_values: '()' or 'self' (good restriction patterns)
+
+Related Modules:
+    - sha.analyzers.__init__ - Registers analyzer in ANALYZER_REGISTRY
+    - sha.config - Imports STATUS_* constants
+    - docs/headers/Permissions-Policy.md - Detailed feature documentation
+
+Example Usage:
+    >>> from sha.analyzers.permissions_policy import analyze, parse_permissions_policy
+    >>> # Good policy - restricts sensitive features
+    >>> finding = analyze("camera=(), microphone=(), geolocation=(), payment=()")
+    >>> finding["status"]
+    "good"
+
+    >>> # Parse policy
+    >>> parsed = parse_permissions_policy("camera=(), microphone=(self)")
+    >>> parsed["camera"]
+    "()"
+
+    >>> # Bad policy - wildcard allows all
+    >>> finding = analyze("camera=*")
+    >>> finding["status"]
+    "bad"
+    >>> finding["severity"]
+    "high"
+
+See Also:
+    - docs/headers/Permissions-Policy.md - Technical explanation and attack scenarios
+    - docs/architecture/EXTENSIBILITY.md - Adding new analyzers
+    - https://w3c.github.io/webappsec-permissions-policy/ - Specification
 """
 
 from typing import Any, Dict, Optional
