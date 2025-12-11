@@ -5,7 +5,7 @@ This module provides the main analyze_headers function that coordinates
 analysis across all registered security header analyzers.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 from .analyzers import ANALYZER_REGISTRY, get_all_header_keys
 
@@ -13,12 +13,13 @@ from .analyzers import ANALYZER_REGISTRY, get_all_header_keys
 Finding = Dict[str, Any]
 
 
-def analyze_headers(headers: Dict[str, str]) -> List[Finding]:
+def analyze_headers(headers: Dict[str, Union[str, List[str]]]) -> List[Finding]:
     """
     Analyze all security headers and generate findings.
 
     Args:
-        headers: Dictionary of HTTP headers (lowercase keys)
+        headers: Dictionary of HTTP headers (lowercase keys).
+                 Most values are strings, but 'set-cookie' can be a list of strings.
 
     Returns:
         List of findings, each containing:

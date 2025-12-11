@@ -4,12 +4,11 @@ Set-Cookie Header Analyzer.
 This module contains configuration and analysis logic for the
 Set-Cookie header which controls cookie security attributes.
 
-Note: Due to current fetcher implementation limitations, only one
-Set-Cookie header is analyzed even if multiple cookies are set.
-Future enhancement: Capture all Set-Cookie headers from response.
+Note: This analyzer handles multiple Set-Cookie headers. When multiple
+cookies are set, all are analyzed and the worst security status is reported.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from ..config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
@@ -144,50 +143,17 @@ def parse_set_cookie(value: str) -> Dict[str, Any]:
     return result
 
 
-def analyze(value: Optional[str]) -> Dict[str, Any]:
+def _analyze_single_cookie(cookie_value: str) -> Dict[str, Any]:
     """
-    Analyze Set-Cookie header.
-
-    Validation rules:
-    - Missing: Info severity (not all responses set cookies)
-    - Missing Secure attribute: High severity (cookie sent over HTTP)
-    - Missing HttpOnly attribute: High severity (XSS can steal cookie)
-    - Missing SameSite or SameSite=None without Secure: Medium-High severity
-    - SameSite=Strict + Secure + HttpOnly: Good
-    - SameSite=Lax + Secure + HttpOnly: Acceptable
-    - Max-Age >1 year: Low severity warning
+    Analyze a single Set-Cookie header value.
 
     Args:
-        value: Header value or None if missing
+        cookie_value: Single cookie string
 
     Returns:
-        Finding dictionary with keys:
-        - header_name: str
-        - status: str (good/acceptable/bad/missing)
-        - severity: str (critical/high/medium/low/info)
-        - message: str
-        - actual_value: str or None
-        - recommendation: str or None
-
-    Note:
-        Currently only analyzes one cookie due to fetcher limitations.
-        If multiple Set-Cookie headers exist, only one is analyzed.
+        Dictionary with analysis results for one cookie
     """
-    header_name = CONFIG["display_name"]
-
-    # Missing header
-    if value is None:
-        return {
-            "header_name": header_name,
-            "status": STATUS_MISSING,
-            "severity": CONFIG["severity_missing"],
-            "message": CONFIG["messages"][STATUS_MISSING],
-            "actual_value": None,
-            "recommendation": CONFIG["recommendations"]["missing"],
-        }
-
-    # Parse cookie
-    parsed = parse_set_cookie(value)
+    parsed = parse_set_cookie(cookie_value)
 
     # Check for critical security attributes
     has_secure = parsed["secure"]
@@ -265,10 +231,129 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
         recommendation = None
 
     return {
-        "header_name": header_name,
+        "cookie_name": parsed.get("cookie_name", "unknown"),
         "status": status,
         "severity": severity,
+        "issues": issues,
+        "recommendations": recommendations,
+        "has_secure": has_secure,
+        "has_httponly": has_httponly,
+        "samesite": samesite,
+    }
+
+
+def analyze(value: Optional[Union[str, List[str]]]) -> Dict[str, Any]:
+    """
+    Analyze Set-Cookie header(s).
+
+    Supports analyzing multiple Set-Cookie headers. When multiple cookies
+    are present, all are analyzed and the worst security status is reported.
+
+    Validation rules:
+    - Missing: Info severity (not all responses set cookies)
+    - Missing Secure attribute: High severity (cookie sent over HTTP)
+    - Missing HttpOnly attribute: High severity (XSS can steal cookie)
+    - Missing SameSite or SameSite=None without Secure: Medium-High severity
+    - SameSite=Strict + Secure + HttpOnly: Good
+    - SameSite=Lax + Secure + HttpOnly: Acceptable
+    - Max-Age >1 year: Low severity warning
+
+    Args:
+        value: Single cookie string, list of cookie strings, or None if missing
+
+    Returns:
+        Finding dictionary with keys:
+        - header_name: str
+        - status: str (good/acceptable/bad/missing)
+        - severity: str (critical/high/medium/low/info)
+        - message: str
+        - actual_value: str or None (summary when multiple cookies)
+        - recommendation: str or None
+        - cookie_count: int (number of cookies analyzed)
+        - cookies: List[Dict] (per-cookie analysis details)
+    """
+    header_name = CONFIG["display_name"]
+
+    # Handle missing cookies
+    if value is None or (isinstance(value, list) and len(value) == 0):
+        return {
+            "header_name": header_name,
+            "status": STATUS_MISSING,
+            "severity": CONFIG["severity_missing"],
+            "message": CONFIG["messages"][STATUS_MISSING],
+            "actual_value": None,
+            "recommendation": CONFIG["recommendations"]["missing"],
+            "cookie_count": 0,
+            "cookies": [],
+        }
+
+    # Normalize to list
+    cookies = [value] if isinstance(value, str) else value
+    cookie_count = len(cookies)
+
+    # Analyze each cookie
+    cookie_results = []
+    for cookie_value in cookies:
+        result = _analyze_single_cookie(cookie_value)
+        cookie_results.append(result)
+
+    # Aggregate results - find worst status
+    worst_status = STATUS_GOOD
+    worst_severity = "info"
+    all_issues = []
+    all_recommendations = []
+
+    # Severity ordering (worst to best)
+    severity_order = {"high": 4, "medium": 3, "low": 2, "info": 1}
+
+    for result in cookie_results:
+        cookie_name = result["cookie_name"]
+
+        # Collect issues with cookie name prefix
+        if result["issues"]:
+            for issue in result["issues"]:
+                all_issues.append(f"{cookie_name}: {issue}")
+            all_recommendations.extend(result["recommendations"])
+
+        # Update worst status
+        if result["status"] == STATUS_BAD:
+            worst_status = STATUS_BAD
+            if severity_order.get(result["severity"], 0) > severity_order.get(worst_severity, 0):
+                worst_severity = result["severity"]
+        elif result["status"] == STATUS_ACCEPTABLE and worst_status != STATUS_BAD:
+            worst_status = STATUS_ACCEPTABLE
+            if severity_order.get(result["severity"], 0) > severity_order.get(worst_severity, 0):
+                worst_severity = result["severity"]
+
+    # Build final message
+    if all_issues:
+        if cookie_count == 1:
+            message = f"Cookie {', '.join(all_issues)}"
+        else:
+            message = f"Analyzed {cookie_count} cookies - Issues: {'; '.join(all_issues)}"
+        recommendation = "; ".join(set(all_recommendations))  # Remove duplicates
+    else:
+        if cookie_count == 1:
+            message = CONFIG["messages"][worst_status]
+        else:
+            message = f"All {cookie_count} cookies have secure attributes"
+        recommendation = None
+
+    # Create actual_value summary
+    if cookie_count == 1:
+        actual_value = cookies[0]
+    else:
+        # Show summary for multiple cookies
+        cookie_names = [r["cookie_name"] for r in cookie_results]
+        actual_value = f"{cookie_count} cookies: {', '.join(cookie_names)}"
+
+    return {
+        "header_name": header_name,
+        "status": worst_status,
+        "severity": worst_severity,
         "message": message,
-        "actual_value": value,
-        "recommendation": recommendation,
+        "actual_value": actual_value,
+        "recommendation": recommendation if recommendation else None,
+        "cookie_count": cookie_count,
+        "cookies": cookie_results,
     }

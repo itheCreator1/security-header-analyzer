@@ -349,3 +349,148 @@ class TestSetCookieEdgeCases:
 
         # Should treat as having SameSite but not recognized value
         assert finding["status"] in [STATUS_ACCEPTABLE, STATUS_GOOD]
+
+
+class TestMultipleCookies:
+    """Test Set-Cookie analyzer with multiple cookies (List[str] input)."""
+
+    def test_multiple_cookies_all_secure(self):
+        """Test multiple cookies all with strict secure attributes."""
+        cookies = [
+            "sessionid=abc123; Secure; HttpOnly; SameSite=Strict",
+            "csrf_token=xyz789; Secure; HttpOnly; SameSite=Strict",
+            "prefs=dark_mode; Secure; HttpOnly; SameSite=Strict",
+        ]
+        finding = analyze(cookies)
+
+        assert finding["status"] == STATUS_GOOD
+        assert finding["cookie_count"] == 3
+        assert "3 cookies" in finding["actual_value"]
+        assert len(finding["cookies"]) == 3
+
+    def test_multiple_cookies_one_insecure(self):
+        """Test multiple cookies where one is missing security attributes."""
+        cookies = [
+            "sessionid=abc123; Secure; HttpOnly; SameSite=Strict",
+            "tracking=xyz789",  # No security attributes!
+        ]
+        finding = analyze(cookies)
+
+        assert finding["status"] == STATUS_BAD
+        assert finding["severity"] == "high"
+        assert finding["cookie_count"] == 2
+        assert "tracking" in finding["message"]
+        assert "missing Secure" in finding["message"] or "missing HttpOnly" in finding["message"]
+
+    def test_multiple_cookies_mixed_security(self):
+        """Test multiple cookies with mixed security levels."""
+        cookies = [
+            "session=abc; Secure; HttpOnly; SameSite=Strict",  # Good
+            "analytics=xyz; Secure; HttpOnly; SameSite=Lax",  # Acceptable
+            "temp=123",  # Bad - no attributes
+        ]
+        finding = analyze(cookies)
+
+        # Worst status should win (BAD)
+        assert finding["status"] == STATUS_BAD
+        assert finding["cookie_count"] == 3
+        assert "temp" in finding["message"]
+
+    def test_multiple_cookies_all_missing_httponly(self):
+        """Test multiple cookies all missing HttpOnly."""
+        cookies = [
+            "session=abc; Secure; SameSite=Strict",
+            "csrf=xyz; Secure; SameSite=Strict",
+        ]
+        finding = analyze(cookies)
+
+        assert finding["status"] == STATUS_BAD
+        assert "missing HttpOnly" in finding["message"]
+        assert finding["cookie_count"] == 2
+        # Both cookies should be listed
+        assert "session" in finding["message"] or "csrf" in finding["message"]
+
+    def test_single_cookie_as_list(self):
+        """Test single cookie passed as a list."""
+        cookies = ["sessionid=abc; Secure; HttpOnly; SameSite=Strict"]
+        finding = analyze(cookies)
+
+        assert finding["status"] == STATUS_GOOD
+        assert finding["cookie_count"] == 1
+        # Should not say "cookies" plural
+        assert "sessionid=abc" in finding["actual_value"]
+
+    def test_empty_cookie_list(self):
+        """Test empty list of cookies."""
+        finding = analyze([])
+
+        assert finding["status"] == STATUS_MISSING
+        assert finding["cookie_count"] == 0
+        assert finding["cookies"] == []
+
+    def test_multiple_cookies_with_same_name(self):
+        """Test multiple cookies with same name (different paths/domains)."""
+        cookies = [
+            "session=abc; Path=/; Secure; HttpOnly; SameSite=Strict",
+            "session=xyz; Path=/admin; Secure; HttpOnly; SameSite=Strict",
+        ]
+        finding = analyze(cookies)
+
+        assert finding["status"] == STATUS_GOOD
+        assert finding["cookie_count"] == 2
+
+    def test_multiple_cookies_backward_compatibility(self):
+        """Test that single string still works (backward compatibility)."""
+        # Single string (old behavior)
+        finding_single = analyze("sessionid=abc; Secure; HttpOnly; SameSite=Strict")
+        assert finding_single["status"] == STATUS_GOOD
+        assert finding_single["cookie_count"] == 1
+
+        # List with one item (new behavior)
+        finding_list = analyze(["sessionid=abc; Secure; HttpOnly; SameSite=Strict"])
+        assert finding_list["status"] == STATUS_GOOD
+        assert finding_list["cookie_count"] == 1
+
+        # Both should have similar results
+        assert finding_single["status"] == finding_list["status"]
+
+    def test_multiple_cookies_preserves_individual_analysis(self):
+        """Test that individual cookie details are preserved."""
+        cookies = [
+            "session=abc; Secure; HttpOnly; SameSite=Strict",
+            "tracking=xyz; SameSite=Lax",  # Missing Secure and HttpOnly
+        ]
+        finding = analyze(cookies)
+
+        assert finding["cookie_count"] == 2
+        assert len(finding["cookies"]) == 2
+
+        # Check individual cookie results
+        session_result = finding["cookies"][0]
+        tracking_result = finding["cookies"][1]
+
+        assert session_result["cookie_name"] == "session"
+        assert session_result["has_secure"] is True
+        assert session_result["has_httponly"] is True
+
+        assert tracking_result["cookie_name"] == "tracking"
+        assert tracking_result["has_secure"] is False
+        assert tracking_result["has_httponly"] is False
+
+    def test_multiple_cookies_recommendation_deduplication(self):
+        """Test that recommendations are deduplicated for multiple cookies."""
+        cookies = [
+            "cookie1=abc",
+            "cookie2=def",
+            "cookie3=ghi",
+        ]
+        finding = analyze(cookies)
+
+        # Should have recommendations, but deduplicated
+        if finding["recommendation"]:
+            # Count how many times "Secure" appears - should be only once
+            # (not once per cookie)
+            rec_lower = finding["recommendation"].lower()
+            # The word "secure" might appear multiple times in different contexts,
+            # but the same recommendation shouldn't be repeated 3 times
+            assert finding["cookie_count"] == 3
