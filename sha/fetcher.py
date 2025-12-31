@@ -81,7 +81,7 @@ Example Usage:
     "https://example.com"
 
 See Also:
-    - docs/architecture/COMPONENTS.md#fetcher-layer - Architecture details
+    - docs/architecture/components.md#fetcher-layer - Architecture details
     - docs/architecture/SECURITY.md - SSRF protection explained
     - SECURITY.md - Known vulnerabilities and limitations
 """

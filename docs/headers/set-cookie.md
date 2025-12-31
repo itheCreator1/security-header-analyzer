@@ -226,7 +226,7 @@ SESSION_COOKIE_SAMESITE = 'Strict'
 
 - [HSTS](HSTS.md) - Enforce HTTPS
 - [CSP](CSP.md) - Additional XSS protection
-- [Analyzer Docs](../ANALYZERS.md#set-cookie)
+- [Analyzer Docs](../analyzer-reference.md#set-cookie)
 
 ---
 

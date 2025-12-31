@@ -59,7 +59,7 @@ Related Modules:
     - sha.analyzers.__init__ - Registers analyzer in ANALYZER_REGISTRY
     - sha.analyzers.coep - Cross-Origin-Embedder-Policy (requires CORP on subresources)
     - sha.config - Imports STATUS_* constants
-    - docs/headers/CORP.md - Detailed CORP documentation
+    - docs/headers/corp.md - Detailed CORP documentation
 
 Example Usage:
     >>> from sha.analyzers.corp import analyze
@@ -74,8 +74,8 @@ Example Usage:
     "acceptable"
 
 See Also:
-    - docs/headers/CORP.md - Technical explanation and attack scenarios
-    - docs/headers/COEP.md - COEP requires CORP on cross-origin resources
+    - docs/headers/corp.md - Technical explanation and attack scenarios
+    - docs/headers/coep.md - COEP requires CORP on cross-origin resources
     - https://resourcepolicy.fyi/ - CORP explainer
 """
 

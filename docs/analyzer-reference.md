@@ -19,8 +19,8 @@ Forces browsers to only communicate with the server over HTTPS, preventing proto
 - Detects `preload` directive
 
 **Severity Levels:**
-- Missing: HIGH
-- Bad configuration: HIGH  
+- Missing: CRITICAL
+- Bad configuration: CRITICAL
 - Good configuration: INFO
 
 **Good Values:**
@@ -104,7 +104,7 @@ Mitigates XSS and data injection attacks by controlling which resources can be l
 - Detects `strict-dynamic`
 
 **Severity Levels:**
-- Missing: HIGH
+- Missing: CRITICAL
 - Contains unsafe-inline or unsafe-eval: HIGH
 - Wildcard sources: MEDIUM-HIGH
 - Good configuration: INFO
@@ -135,8 +135,8 @@ Controls how much referrer information is sent with requests.
 - Recommends stricter policies when appropriate
 
 **Severity Levels:**
-- Missing: MEDIUM
-- Unsafe values: MEDIUM
+- Missing: HIGH
+- Unsafe values: HIGH
 - Good values: INFO
 
 **Good Values:**

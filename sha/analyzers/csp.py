@@ -75,7 +75,7 @@ Configuration:
 Related Modules:
     - sha.analyzers.__init__ - Registers csp.analyze in ANALYZER_REGISTRY
     - sha.config - Imports STATUS_* constants
-    - docs/headers/CSP.md - Detailed CSP documentation with examples
+    - docs/headers/csp.md - Detailed CSP documentation with examples
 
 Example Usage:
     >>> from sha.analyzers.csp import analyze, parse_csp
@@ -97,8 +97,8 @@ Example Usage:
     "high"
 
 See Also:
-    - docs/headers/CSP.md - Technical explanation and attack scenarios
-    - docs/architecture/COMPONENTS.md#analyzer-layer - Analyzer architecture
+    - docs/headers/csp.md - Technical explanation and attack scenarios
+    - docs/architecture/components.md#analyzer-layer - Analyzer architecture
     - https://www.w3.org/TR/CSP3/ - CSP Level 3 specification
 """
 

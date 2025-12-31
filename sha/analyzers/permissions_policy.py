@@ -88,7 +88,7 @@ Example Usage:
 
 See Also:
     - docs/headers/Permissions-Policy.md - Technical explanation and attack scenarios
-    - docs/architecture/EXTENSIBILITY.md - Adding new analyzers
+    - docs/architecture/extensibility-guide.md - Adding new analyzers
     - https://w3c.github.io/webappsec-permissions-policy/ - Specification
 """
 

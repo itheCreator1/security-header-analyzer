@@ -400,7 +400,7 @@ python -m sha https://yourdomain.com
 
 ## See Also
 
-- [Analyzer Implementation](../ANALYZERS.md#strict-transport-security) - How we validate HSTS
+- [Analyzer Implementation](../analyzer-reference.md#strict-transport-security) - How we validate HSTS
 - [Best Practices Guide](../SecurityHeadersBestPractices.md#hsts) - Configuration recommendations
 - [Attack Scenarios](../ATTACK_SCENARIOS.md#ssl-stripping) - More attack examples
 - [API Usage](../API.md#hsts-analyzer) - Programmatic HSTS analysis

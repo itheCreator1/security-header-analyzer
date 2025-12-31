@@ -62,7 +62,7 @@ Related Modules:
     - sha.analyzers.coop - Cross-Origin-Opener-Policy (required companion)
     - sha.analyzers.corp - Cross-Origin-Resource-Policy (required for require-corp)
     - sha.config - Imports STATUS_* constants
-    - docs/headers/COEP.md - Detailed COEP documentation
+    - docs/headers/coep.md - Detailed COEP documentation
 
 Example Usage:
     >>> from sha.analyzers.coep import analyze
@@ -77,8 +77,8 @@ Example Usage:
     "acceptable"
 
 See Also:
-    - docs/headers/COEP.md - Technical explanation and use cases
-    - docs/headers/COOP.md - Companion header for full isolation
+    - docs/headers/coep.md - Technical explanation and use cases
+    - docs/headers/coop.md - Companion header for full isolation
     - https://web.dev/coop-coep/ - Cross-origin isolation guide
 """
 

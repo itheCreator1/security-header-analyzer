@@ -135,7 +135,7 @@ res.setHeader('X-Content-Type-Options', 'nosniff');
 ## See Also
 
 - [CSP](CSP.md) - Complementary XSS protection
-- [Analyzer Docs](../ANALYZERS.md#x-content-type-options)
+- [Analyzer Docs](../analyzer-reference.md#x-content-type-options)
 
 ---
 

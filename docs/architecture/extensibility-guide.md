@@ -314,7 +314,7 @@ class TestNewHeaderConfig:
 
 ### Step 4: Update Documentation
 
-**1. Add to ANALYZERS.md:**
+**1. Add to analyzer-reference.md:**
 
 Add an entry describing your analyzer:
 
@@ -500,7 +500,7 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
 - [ ] Registered in `__init__.py` (CONFIG_REGISTRY)
 - [ ] Tests created in `tests/`
 - [ ] All tests passing (`pytest tests/test_new_header.py`)
-- [ ] Added to `docs/ANALYZERS.md`
+- [ ] Added to `docs/analyzer-reference.md`
 - [ ] Updated `CHANGELOG.md`
 - [ ] Pre-commit hooks pass
 - [ ] Type checking passes (`mypy`)

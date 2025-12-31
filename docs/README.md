@@ -6,11 +6,11 @@ Welcome to the Security Header Analyzer documentation. This index organizes all 
 
 ## Quick Links
 
-🚀 [Installation](INSTALLATION.md) - Get started in 2 minutes
-📖 [Tutorial](TUTORIAL.md) - Learn by example
+🚀 [Installation](installation-guide.md) - Get started in 2 minutes
+📖 [Tutorial](quick-start-tutorial.md) - Learn by example
 🔒 [Security Headers Overview](headers/README.md) - Understand all 15 headers
 🏗️ [Architecture](architecture/README.md) - System design and patterns
-🛠️ [API Reference](API.md) - Programmatic usage
+🛠️ [API Reference](api-reference.md) - Programmatic usage
 
 ---
 
@@ -19,17 +19,17 @@ Welcome to the Security Header Analyzer documentation. This index organizes all 
 ### I'm a User
 
 **Getting Started:**
-1. [Installation Guide](INSTALLATION.md) - Setup and prerequisites
-2. [Quick Tutorial](TUTORIAL.md) - 5-minute walkthrough
-3. [Usage Guide](USAGE.md) - CLI options and examples
+1. [Installation Guide](installation-guide.md) - Setup and prerequisites
+2. [Quick Tutorial](quick-start-tutorial.md) - 5-minute walkthrough
+3. [Usage Guide](usage-guide.md) - CLI options and examples
 
 **Understanding Results:**
 - [Security Headers Overview](headers/README.md) - All 15 headers explained
-- [Attack Scenarios](ATTACK_SCENARIOS.md) - Real-world exploits prevented
-- [Best Practices](SecurityHeadersBestPractices.md) - Configuration recommendations
+- [Attack Scenarios](real-world-attack-scenarios.md) - Real-world exploits prevented
+- [Best Practices](security-headers-best-practices.md) - Configuration recommendations
 
 **Troubleshooting:**
-- [Common Issues](USAGE.md#troubleshooting) - Error messages and solutions
+- [Common Issues](usage-guide.md#troubleshooting) - Error messages and solutions
 - [Security Policy](../SECURITY.md) - Vulnerability reporting
 
 ---
@@ -37,28 +37,28 @@ Welcome to the Security Header Analyzer documentation. This index organizes all 
 ### I'm a Developer
 
 **Core Documentation:**
-- [API Reference](API.md) - Library usage and functions
+- [API Reference](api-reference.md) - Library usage and functions
 - [Architecture Overview](architecture/README.md) - System design
-- [Testing Guide](TESTING.md) - Running and writing tests
+- [Testing Guide](testing-guide.md) - Running and writing tests
 
 **Deep Dives:**
-- [Component Specifications](architecture/COMPONENTS.md) - Detailed component docs
-- [Data Flow](architecture/DATA_FLOW.md) - Request processing pipeline
-- [Registry Pattern](architecture/REGISTRY_PATTERN.md) - How analyzers work
+- [Component Specifications](architecture/components.md) - Detailed component docs
+- [Data Flow](architecture/data-flow.md) - Request processing pipeline
+- [Registry Pattern](architecture/registry-pattern.md) - How analyzers work
 
 **Contributing:**
-- [Extensibility Guide](architecture/EXTENSIBILITY.md) - Adding new analyzers
+- [Extensibility Guide](architecture/extensibility-guide.md) - Adding new analyzers
 - [Contributing Guidelines](../CONTRIBUTING.md) - Development workflow
-- [Testing Standards](TESTING.md) - Test patterns and coverage
+- [Testing Standards](testing-guide.md) - Test patterns and coverage
 
 ---
 
 ### I'm a Security Engineer
 
 **Security Analysis:**
-- [Attack Scenarios](ATTACK_SCENARIOS.md) - Cross-header attack examples
-- [SSRF Protection](architecture/SECURITY.md) - Security architecture details
-- [Best Practices](SecurityHeadersBestPractices.md) - Header configuration guide
+- [Attack Scenarios](real-world-attack-scenarios.md) - Cross-header attack examples
+- [SSRF Protection](architecture/security-implementation.md) - Security architecture details
+- [Best Practices](security-headers-best-practices.md) - Header configuration guide
 
 **Header Deep Dives:**
 - [All Security Headers](headers/README.md) - Index of all 15 headers
@@ -66,8 +66,8 @@ Welcome to the Security Header Analyzer documentation. This index organizes all 
 - [High Priority Headers](headers/README.md#high-severity) - X-Frame-Options, Referrer-Policy
 
 **Integration:**
-- [Deployment Guide](DEPLOYMENT.md) - CI/CD integration
-- [Analyzer Specifications](ANALYZERS.md) - Validation rules
+- [Deployment Guide](deployment-guide.md) - CI/CD integration
+- [Analyzer Specifications](analyzer-reference.md) - Validation rules
 
 ---
 
@@ -78,27 +78,27 @@ Welcome to the Security Header Analyzer documentation. This index organizes all 
 **Overview:** [Security Headers Index](headers/README.md)
 
 **Critical Severity:**
-- [HSTS](headers/HSTS.md) - Strict-Transport-Security
-- [CSP](headers/CSP.md) - Content-Security-Policy
+- [HSTS](headers/hsts.md) - Strict-Transport-Security
+- [CSP](headers/csp.md) - Content-Security-Policy
 
 **High Severity:**
-- [X-Frame-Options](headers/X-Frame-Options.md) - Clickjacking protection
-- [Referrer-Policy](headers/Referrer-Policy.md) - Referrer control
+- [X-Frame-Options](headers/x-frame-options.md) - Clickjacking protection
+- [Referrer-Policy](headers/referrer-policy.md) - Referrer control
 
 **Medium Severity:**
-- [X-Content-Type-Options](headers/X-Content-Type-Options.md) - MIME sniffing protection
-- [Set-Cookie](headers/Set-Cookie.md) - Cookie security attributes
-- [Cache-Control](headers/Cache-Control.md) - Cache security
-- [Expect-CT](headers/Expect-CT.md) - Certificate Transparency
-- [X-Permitted-Cross-Domain-Policies](headers/X-Permitted-Cross-Domain-Policies.md) - Flash/PDF policies
+- [X-Content-Type-Options](headers/x-content-type-options.md) - MIME sniffing protection
+- [Set-Cookie](headers/set-cookie.md) - Cookie security attributes
+- [Cache-Control](headers/cache-control.md) - Cache security
+- [Expect-CT](headers/expect-ct.md) - Certificate Transparency
+- [X-Permitted-Cross-Domain-Policies](headers/x-permitted-cross-domain-policies.md) - Flash/PDF policies
 
 **Low Severity:**
-- [X-XSS-Protection](headers/X-XSS-Protection.md) - Legacy XSS filter (deprecated)
-- [X-Download-Options](headers/X-Download-Options.md) - IE download security
-- [Permissions-Policy](headers/Permissions-Policy.md) - Browser feature control
-- [COEP](headers/COEP.md) - Cross-Origin-Embedder-Policy
-- [COOP](headers/COOP.md) - Cross-Origin-Opener-Policy
-- [CORP](headers/CORP.md) - Cross-Origin-Resource-Policy
+- [X-XSS-Protection](headers/x-xss-protection.md) - Legacy XSS filter (deprecated)
+- [X-Download-Options](headers/x-download-options.md) - IE download security
+- [Permissions-Policy](headers/permissions-policy.md) - Browser feature control
+- [COEP](headers/coep.md) - Cross-Origin-Embedder-Policy
+- [COOP](headers/coop.md) - Cross-Origin-Opener-Policy
+- [CORP](headers/corp.md) - Cross-Origin-Resource-Policy
 
 ---
 
@@ -107,17 +107,17 @@ Welcome to the Security Header Analyzer documentation. This index organizes all 
 **Overview:** [Architecture Index](architecture/README.md)
 
 **Core Concepts:**
-- [System Design](architecture/SYSTEM_DESIGN.md) - High-level architecture diagrams
-- [Data Flow](architecture/DATA_FLOW.md) - Pipeline pattern explained
-- [Components](architecture/COMPONENTS.md) - CLI, Fetcher, Analyzer, Reporter layers
+- [System Design](architecture/system-design.md) - High-level architecture diagrams
+- [Data Flow](architecture/data-flow.md) - Pipeline pattern explained
+- [Components](architecture/components.md) - CLI, Fetcher, Analyzer, Reporter layers
 
 **Advanced Topics:**
-- [Registry Pattern](architecture/REGISTRY_PATTERN.md) - Dynamic analyzer registration
-- [Extensibility](architecture/EXTENSIBILITY.md) - Adding new analyzers step-by-step
-- [Security Architecture](architecture/SECURITY.md) - SSRF protection implementation
+- [Registry Pattern](architecture/registry-pattern.md) - Dynamic analyzer registration
+- [Extensibility](architecture/extensibility-guide.md) - Adding new analyzers step-by-step
+- [Security Architecture](architecture/security-implementation.md) - SSRF protection implementation
 
 **Future:**
-- [Planned Features](architecture/FUTURE.md) - Roadmap and enhancements
+- [Planned Features](architecture/future-roadmap.md) - Roadmap and enhancements
 
 ---
 
@@ -125,12 +125,12 @@ Welcome to the Security Header Analyzer documentation. This index organizes all 
 
 **Getting Started:**
 - [Contributing Guidelines](../CONTRIBUTING.md) - Development workflow
-- [Testing Guide](TESTING.md) - Running tests and writing new ones
-- [API Documentation](API.md) - Library interface
+- [Testing Guide](testing-guide.md) - Running tests and writing new ones
+- [API Documentation](api-reference.md) - Library interface
 
 **References:**
-- [Analyzer Specifications](ANALYZERS.md) - Individual analyzer details
-- [Deployment Guide](DEPLOYMENT.md) - CI/CD integration
+- [Analyzer Specifications](analyzer-reference.md) - Individual analyzer details
+- [Deployment Guide](deployment-guide.md) - CI/CD integration
 - [Changelog](../CHANGELOG.md) - Version history
 
 ---
@@ -142,9 +142,9 @@ docs/
 ├── README.md                          ← YOU ARE HERE
 │
 ├── Getting Started
-│   ├── INSTALLATION.md                Quick setup guide
-│   ├── USAGE.md                       CLI usage and examples
-│   └── TUTORIAL.md                    Step-by-step walkthrough
+│   ├── installation-guide.md          Quick setup guide
+│   ├── usage-guide.md                 CLI usage and examples
+│   └── quick-start-tutorial.md        Step-by-step walkthrough
 │
 ├── Security Headers
 │   └── headers/
@@ -154,23 +154,23 @@ docs/
 ├── Architecture
 │   └── architecture/
 │       ├── README.md                  Architecture index
-│       ├── SYSTEM_DESIGN.md           High-level design
-│       ├── DATA_FLOW.md               Request pipeline
-│       ├── COMPONENTS.md              Component specs
-│       ├── REGISTRY_PATTERN.md        Registry explained
-│       ├── EXTENSIBILITY.md           Adding analyzers
-│       ├── SECURITY.md                SSRF protection
-│       └── FUTURE.md                  Planned features
+│       ├── system-design.md           High-level design
+│       ├── data-flow.md               Request pipeline
+│       ├── components.md              Component specs
+│       ├── registry-pattern.md        Registry explained
+│       ├── extensibility-guide.md     Adding analyzers
+│       ├── security-implementation.md SSRF protection
+│       └── future-roadmap.md          Planned features
 │
 ├── Advanced Topics
-│   ├── ATTACK_SCENARIOS.md            Real-world attacks
-│   ├── SecurityHeadersBestPractices.md Configuration guide
-│   └── DEPLOYMENT.md                  CI/CD integration
+│   ├── real-world-attack-scenarios.md Real-world attacks
+│   ├── security-headers-best-practices.md Configuration guide
+│   └── deployment-guide.md            CI/CD integration
 │
 └── Reference
-    ├── API.md                         Library API
-    ├── ANALYZERS.md                   Analyzer specs
-    └── TESTING.md                     Testing guide
+    ├── api-reference.md               Library API
+    ├── analyzer-reference.md          Analyzer specs
+    └── testing-guide.md               Testing guide
 ```
 
 ---
@@ -186,8 +186,8 @@ docs/
 
 ## Need Help?
 
-- **Installation Issues:** See [Installation Guide](INSTALLATION.md)
-- **Usage Questions:** Check [Usage Guide](USAGE.md) or [Tutorial](TUTORIAL.md)
+- **Installation Issues:** See [Installation Guide](installation-guide.md)
+- **Usage Questions:** Check [Usage Guide](usage-guide.md) or [Tutorial](quick-start-tutorial.md)
 - **Security Concerns:** Read [Security Policy](../SECURITY.md)
 - **Feature Requests:** Open an [issue](https://github.com/itheCreator1/security-header-analyzer/issues)
 - **Contributing:** Review [Contributing Guidelines](../CONTRIBUTING.md)

@@ -70,7 +70,7 @@ Example Usage:
     2
 
 See Also:
-    - docs/architecture/COMPONENTS.md#reporter-layer - Architecture details
+    - docs/architecture/components.md#reporter-layer - Architecture details
     - docs/API.md#reporter-module - API reference
     - docs/USAGE.md#output-formats - Output format examples
 """

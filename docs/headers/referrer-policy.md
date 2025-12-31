@@ -388,7 +388,7 @@ Referrer-Policy: strict-origin-when-cross-origin
 
 ## See Also
 
-- [Analyzer Implementation](../ANALYZERS.md#referrer-policy)
+- [Analyzer Implementation](../analyzer-reference.md#referrer-policy)
 - [Best Practices](../SecurityHeadersBestPractices.md#referrer-policy)
 - [Privacy Guide](../ATTACK_SCENARIOS.md#information-leakage)
 

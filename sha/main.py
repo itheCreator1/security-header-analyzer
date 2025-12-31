@@ -49,7 +49,7 @@ Example Usage:
 
 See Also:
     - docs/USAGE.md - Complete CLI usage guide with examples
-    - docs/architecture/COMPONENTS.md#cli-layer - Architecture details
+    - docs/architecture/components.md#cli-layer - Architecture details
     - docs/architecture/DATA_FLOW.md - Pipeline workflow explained
 """
 

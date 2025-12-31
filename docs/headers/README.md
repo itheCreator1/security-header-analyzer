@@ -271,7 +271,7 @@ Missing these headers is a **low-risk** security issue.
 ### Internal Documentation
 - [Attack Scenarios](../ATTACK_SCENARIOS.md) - Real-world attack examples
 - [Best Practices](../SecurityHeadersBestPractices.md) - Configuration recommendations
-- [Analyzer Specifications](../ANALYZERS.md) - How we validate each header
+- [Analyzer Specifications](../analyzer-reference.md) - How we validate each header
 - [API Reference](../API.md) - Library usage
 
 ### External Resources

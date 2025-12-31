@@ -97,7 +97,7 @@ Example Usage:
 
 See Also:
     - docs/headers/Expect-CT.md - Technical explanation and attack scenarios
-    - docs/architecture/EXTENSIBILITY.md - Adding new analyzers
+    - docs/architecture/extensibility-guide.md - Adding new analyzers
     - https://tools.ietf.org/html/rfc6962 - Certificate Transparency specification
 """
 

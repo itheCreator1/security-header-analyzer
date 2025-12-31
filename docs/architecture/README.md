@@ -130,6 +130,6 @@ sha/
 ## See Also
 
 - [API Documentation](../API.md) - Programmatic usage
-- [Analyzer Reference](../ANALYZERS.md) - Individual analyzer specs
+- [Analyzer Reference](../analyzer-reference.md) - Individual analyzer specs
 - [Testing Guide](../TESTING.md) - Running and writing tests
 - [Security Policy](../../SECURITY.md) - Vulnerability reporting

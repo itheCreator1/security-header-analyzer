@@ -62,7 +62,7 @@ Example Usage:
     >>> raise NetworkError("Connection timeout")
 
 See Also:
-    - docs/architecture/COMPONENTS.md#configuration-module - Architecture details
+    - docs/architecture/components.md#configuration-module - Architecture details
     - docs/architecture/SECURITY.md#ssrf-protection - SSRF protection explained
     - SECURITY.md - Security considerations and known limitations
 """

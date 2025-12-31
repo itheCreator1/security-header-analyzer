@@ -71,7 +71,7 @@ Example Usage:
 
 See Also:
     - docs/headers/X-Content-Type-Options.md - Technical explanation and attack scenarios
-    - docs/architecture/EXTENSIBILITY.md - Adding new analyzers
+    - docs/architecture/extensibility-guide.md - Adding new analyzers
     - https://fetch.spec.whatwg.org/#x-content-type-options-header - Specification
 """
 

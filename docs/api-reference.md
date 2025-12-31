@@ -73,7 +73,7 @@ def fetch_headers(
     follow_redirects: bool = True,
     max_redirects: int = 5,
     user_agent: Optional[str] = None
-) -> Dict[str, str]:
+) -> Dict[str, Union[str, List[str]]]:
     """
     Fetch HTTP headers from a URL using HEAD request.
 
@@ -85,7 +85,8 @@ def fetch_headers(
         user_agent: Custom User-Agent string (default: SecurityHeaderAnalyzer/1.0.0)
 
     Returns:
-        Dictionary of headers with lowercase keys
+        Dictionary of headers with lowercase keys.
+        Most headers are str, but 'set-cookie' is List[str] to capture all cookies.
 
     Raises:
         InvalidURLError: If URL is invalid or unsafe (SSRF)
@@ -116,7 +117,7 @@ def fetch_headers_safe(
     follow_redirects: bool = True,
     max_redirects: int = 5,
     user_agent: Optional[str] = None
-) -> Tuple[Dict[str, str], Optional[Exception]]:
+) -> Tuple[Dict[str, Union[str, List[str]]], Optional[Exception]]:
     """
     Safely fetch headers without raising exceptions.
 
@@ -612,7 +613,7 @@ for url in urls:
 ## Further Reading
 
 - [Architecture Documentation](./ARCHITECTURE.md) - System design
-- [Analyzer Documentation](./ANALYZERS.md) - Header analysis details
+- [Analyzer Documentation](./analyzer-reference.md) - Header analysis details
 - [Security Policy](../SECURITY.md) - Security considerations
 - [Contributing Guide](../CONTRIBUTING.md) - Development workflow
 

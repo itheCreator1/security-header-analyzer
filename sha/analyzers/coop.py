@@ -58,7 +58,7 @@ Related Modules:
     - sha.analyzers.__init__ - Registers analyzer in ANALYZER_REGISTRY
     - sha.analyzers.coep - Cross-Origin-Embedder-Policy (companion for SharedArrayBuffer)
     - sha.config - Imports STATUS_* constants
-    - docs/headers/COOP.md - Detailed COOP documentation
+    - docs/headers/coop.md - Detailed COOP documentation
 
 Example Usage:
     >>> from sha.analyzers.coop import analyze
@@ -73,8 +73,8 @@ Example Usage:
     "acceptable"
 
 See Also:
-    - docs/headers/COOP.md - Technical explanation and attack scenarios
-    - docs/headers/COEP.md - Companion header for SharedArrayBuffer
+    - docs/headers/coop.md - Technical explanation and attack scenarios
+    - docs/headers/coep.md - Companion header for SharedArrayBuffer
     - https://web.dev/why-coop-coep/ - Why COOP+COEP matter
 """
 

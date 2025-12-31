@@ -409,7 +409,7 @@ app.use((req, res, next) => {
 
 ## See Also
 
-- [Analyzer Implementation](../ANALYZERS.md#content-security-policy)
+- [Analyzer Implementation](../analyzer-reference.md#content-security-policy)
 - [Best Practices](../SecurityHeadersBestPractices.md#csp)
 - [Attack Scenarios](../ATTACK_SCENARIOS.md#xss)
 

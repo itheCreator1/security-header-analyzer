@@ -70,7 +70,7 @@ Adding New Analyzers:
     4. Add to ANALYZER_REGISTRY and CONFIG_REGISTRY dictionaries
     5. No changes needed to analyzer.py or main.py!
 
-    See: docs/architecture/EXTENSIBILITY.md for step-by-step guide
+    See: docs/architecture/extensibility-guide.md for step-by-step guide
 
 Related Modules:
     - sha.analyzer - Loops through ANALYZER_REGISTRY to analyze all headers
@@ -93,8 +93,8 @@ Example Usage:
 
 See Also:
     - docs/architecture/REGISTRY_PATTERN.md - Registry pattern explained
-    - docs/architecture/EXTENSIBILITY.md - Adding new analyzers
-    - docs/architecture/COMPONENTS.md#analyzer-layer - Architecture overview
+    - docs/architecture/extensibility-guide.md - Adding new analyzers
+    - docs/architecture/components.md#analyzer-layer - Architecture overview
 """
 
 from typing import Any, Callable, Dict

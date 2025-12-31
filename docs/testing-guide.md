@@ -2,7 +2,7 @@
 
 ## Overview
 
-Security Header Analyzer has comprehensive test coverage (~96%) with 291 tests across unit, integration, and edge case scenarios. This guide explains how to run tests, write new tests, and maintain test quality.
+Security Header Analyzer has comprehensive test coverage (~96%) with 478 tests across unit, integration, and edge case scenarios. This guide explains how to run tests, write new tests, and maintain test quality.
 
 ## Running Tests
 

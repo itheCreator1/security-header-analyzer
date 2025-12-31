@@ -80,7 +80,7 @@ Example Usage:
 
 See Also:
     - docs/headers/X-Permitted-Cross-Domain-Policies.md - Attack scenarios and history
-    - docs/architecture/EXTENSIBILITY.md - Adding new analyzers
+    - docs/architecture/extensibility-guide.md - Adding new analyzers
     - https://www.adobe.com/devnet-docs/acrobatetk/tools/AppSec/CrossDomain.html
 """
 

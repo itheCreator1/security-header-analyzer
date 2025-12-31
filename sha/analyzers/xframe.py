@@ -71,7 +71,7 @@ Example Usage:
 
 See Also:
     - docs/headers/X-Frame-Options.md - Technical explanation and attack scenarios
-    - docs/headers/CSP.md - Modern frame-ancestors directive as replacement
+    - docs/headers/csp.md - Modern frame-ancestors directive as replacement
     - https://tools.ietf.org/html/rfc7034 - X-Frame-Options specification
 """
 

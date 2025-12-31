@@ -379,7 +379,7 @@ Use both during transition for IE11 support (CSP frame-ancestors not supported i
 
 ## See Also
 
-- [Analyzer Implementation](../ANALYZERS.md#x-frame-options)
+- [Analyzer Implementation](../analyzer-reference.md#x-frame-options)
 - [Best Practices](../SecurityHeadersBestPractices.md#x-frame-options)
 - [Attack Scenarios](../ATTACK_SCENARIOS.md#clickjacking)
 

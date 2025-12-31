@@ -104,7 +104,7 @@ Example Usage:
 
 See Also:
     - docs/headers/Set-Cookie.md - Technical explanation and attack scenarios
-    - docs/architecture/COMPONENTS.md#analyzer-layer - Multi-header handling
+    - docs/architecture/components.md#analyzer-layer - Multi-header handling
     - https://tools.ietf.org/html/rfc6265 - HTTP State Management (cookies)
 """
 

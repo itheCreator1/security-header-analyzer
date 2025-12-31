@@ -71,7 +71,7 @@ Example Usage:
 
 See Also:
     - docs/headers/X-XSS-Protection.md - Why filters were deprecated
-    - docs/headers/CSP.md - Modern XSS protection replacement
+    - docs/headers/csp.md - Modern XSS protection replacement
     - https://owasp.org/www-community/attacks/xss/
 """
 

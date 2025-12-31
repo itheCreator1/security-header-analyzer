@@ -101,7 +101,7 @@ Example Usage:
 
 See Also:
     - docs/headers/Cache-Control.md - Technical explanation and attack scenarios
-    - docs/architecture/EXTENSIBILITY.md - Adding new analyzers
+    - docs/architecture/extensibility-guide.md - Adding new analyzers
     - https://tools.ietf.org/html/rfc7234 - HTTP Caching specification
 """
 

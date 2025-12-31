@@ -35,7 +35,7 @@ Related Modules:
 See Also:
     - docs/USAGE.md - Command-line usage examples
     - docs/INSTALLATION.md - Installation and setup guide
-    - docs/architecture/COMPONENTS.md#cli-layer - CLI architecture
+    - docs/architecture/components.md#cli-layer - CLI architecture
 """
 
 from .main import main

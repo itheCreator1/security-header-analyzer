@@ -84,7 +84,7 @@ Example Usage:
 
 See Also:
     - docs/headers/Referrer-Policy.md - Technical explanation and attack scenarios
-    - docs/architecture/EXTENSIBILITY.md - Adding new analyzers
+    - docs/architecture/extensibility-guide.md - Adding new analyzers
     - https://w3c.github.io/webappsec-referrer-policy/ - Referrer Policy specification
 """
 

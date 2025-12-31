@@ -49,7 +49,7 @@ Configuration:
 Related Modules:
     - sha.analyzers.__init__ - Registers hsts.analyze in ANALYZER_REGISTRY
     - sha.config - Imports STATUS_* constants and severity levels
-    - docs/headers/HSTS.md - Detailed header documentation
+    - docs/headers/hsts.md - Detailed header documentation
 
 Example Usage:
     >>> from sha.analyzers.hsts import analyze, parse_hsts
@@ -75,8 +75,8 @@ Example Usage:
     "critical"
 
 See Also:
-    - docs/headers/HSTS.md - Technical explanation and attack scenarios
-    - docs/architecture/EXTENSIBILITY.md - How analyzers integrate with registry
+    - docs/headers/hsts.md - Technical explanation and attack scenarios
+    - docs/architecture/extensibility-guide.md - How analyzers integrate with registry
     - https://tools.ietf.org/html/rfc6797 - HSTS RFC specification
 """
 

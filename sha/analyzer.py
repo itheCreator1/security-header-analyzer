@@ -52,7 +52,7 @@ Example Usage:
     'Strict-Transport-Security'
 
 See Also:
-    - docs/architecture/COMPONENTS.md#analyzer-layer - Architecture details
+    - docs/architecture/components.md#analyzer-layer - Architecture details
     - docs/architecture/REGISTRY_PATTERN.md - Registry pattern explained
     - docs/API.md#analyzer-module - API reference
 """

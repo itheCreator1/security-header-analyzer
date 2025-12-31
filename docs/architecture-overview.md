@@ -413,7 +413,7 @@ class TestNewHeaderAnalyzer:
 
 **4. Update Documentation**
 
-- Add entry to `docs/ANALYZERS.md`
+- Add entry to `docs/analyzer-reference.md`
 - Update CHANGELOG.md
 - Update README.md if it's a major addition
 
@@ -617,4 +617,4 @@ Each analyzer has its own `CONFIG` dictionary with:
 - [SECURITY.md](../SECURITY.md) - Security considerations
 - [CONTRIBUTING.md](../CONTRIBUTING.md) - Development guide
 - [API.md](./API.md) - API documentation
-- [ANALYZERS.md](./ANALYZERS.md) - Analyzer details
+- [analyzer-reference.md](./analyzer-reference.md) - Analyzer details

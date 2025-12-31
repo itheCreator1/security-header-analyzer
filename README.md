@@ -1,7 +1,7 @@
 # Security Header Analyzer
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-291%20passing-success.svg)](https://github.com/itheCreator1/security-header-analyzer/actions)
+[![Tests](https://img.shields.io/badge/tests-478%20passing-success.svg)](https://github.com/itheCreator1/security-header-analyzer/actions)
 [![Coverage](https://img.shields.io/badge/coverage-96%25-brightgreen.svg)](https://github.com/itheCreator1/security-header-analyzer)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -9,11 +9,11 @@ A lightweight Python CLI tool that fetches and analyzes HTTP security headers ac
 
 ## 🚀 Features
 
-* **9 Security Header Analyzers**: HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, COEP, COOP, CORP
+* **15 Security Header Analyzers**: HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Set-Cookie, Cache-Control, Expect-CT, Permissions-Policy, COEP, COOP, CORP, X-XSS-Protection, X-Download-Options, X-Permitted-Cross-Domain-Policies
 * **SSRF Protection**: Built-in safeguards against Server-Side Request Forgery attacks
 * **Multiple Output Formats**: Human-readable text or JSON for automation
 * **Severity Classification**: Issues categorized as Critical, High, Medium, or Low
-* **96% Test Coverage**: 291 comprehensive tests ensuring reliability
+* **96% Test Coverage**: 478 comprehensive tests ensuring reliability
 * **Type Safety**: Full type hints with mypy support
 * **CI/CD Ready**: Easy integration with GitHub Actions, GitLab CI, Jenkins
 * **Extensible**: Add new header analyzers with minimal code changes
@@ -56,11 +56,11 @@ python -m sha https://example.com
 
 ## 📖 Documentation
 
-- **[Architecture Guide](docs/ARCHITECTURE.md)** - System design, components, and extensibility
-- **[API Documentation](docs/API.md)** - Library usage and programmatic access
-- **[Analyzer Reference](docs/ANALYZERS.md)** - Detailed header analysis specifications
-- **[Testing Guide](docs/TESTING.md)** - Running and writing tests
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - CI/CD integration and production deployment
+- **[Architecture Guide](docs/architecture-overview.md)** - System design, components, and extensibility
+- **[API Documentation](docs/api-reference.md)** - Library usage and programmatic access
+- **[Analyzer Reference](docs/analyzer-reference.md)** - Detailed header analysis specifications
+- **[Testing Guide](docs/testing-guide.md)** - Running and writing tests
+- **[Deployment Guide](docs/deployment-guide.md)** - CI/CD integration and production deployment
 - **[Contributing](CONTRIBUTING.md)** - Development workflow and guidelines
 - **[Security Policy](SECURITY.md)** - Vulnerability reporting and security considerations
 - **[Changelog](CHANGELOG.md)** - Version history and release notes
@@ -77,8 +77,8 @@ security-header-analyzer/
 │   ├── analyzer.py       # Analysis orchestration
 │   ├── reporter.py       # Report generation (text/JSON)
 │   ├── config.py         # Configuration and exceptions
-│   └── analyzers/        # Individual header analyzers (9 total)
-├── tests/                # Comprehensive test suite (291 tests, 96% coverage)
+│   └── analyzers/        # Individual header analyzers (15 total)
+├── tests/                # Comprehensive test suite (478 tests, 96% coverage)
 ├── docs/                 # Documentation
 └── .github/              # CI/CD workflows
 ```
@@ -101,7 +101,7 @@ report = generate_report(findings, url="https://example.com", format="json")
 print(report)
 ```
 
-See [API Documentation](docs/API.md) for complete reference.
+See [API Documentation](docs/api-reference.md) for complete reference.
 
 ## 🛡 Security Notes
 
@@ -132,7 +132,7 @@ pytest --cov=sha --cov-report=html
 pytest tests/test_hsts.py -v
 ```
 
-See [Testing Guide](docs/TESTING.md) for details.
+See [Testing Guide](docs/testing-guide.md) for details.
 
 ## 🤝 Contributing
 

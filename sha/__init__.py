@@ -35,7 +35,7 @@ Related Modules:
 
 See Also:
     - docs/API.md - Library usage and programmatic access
-    - docs/architecture/COMPONENTS.md - Package structure details
+    - docs/architecture/components.md - Package structure details
     - README.md - Project overview and quick start
 """
 

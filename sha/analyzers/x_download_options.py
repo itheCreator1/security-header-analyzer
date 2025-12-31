@@ -62,7 +62,7 @@ Example Usage:
 
 See Also:
     - docs/headers/X-Download-Options.md - IE-specific attack scenarios
-    - docs/architecture/EXTENSIBILITY.md - Adding new analyzers
+    - docs/architecture/extensibility-guide.md - Adding new analyzers
 """
 
 from typing import Any, Dict, Optional
