@@ -167,11 +167,20 @@ def parse_csp(value: str) -> Dict[str, List[str]]:
     """
     Parse CSP header value into directives.
 
+    Handles:
+    - Empty directives
+    - Malformed directives
+    - Duplicate directives (last one wins, per CSP spec)
+    - Extremely long CSPs (memory limit protection)
+
     Args:
         value: CSP header value
 
     Returns:
         Dictionary mapping directive names to lists of values
+
+    Raises:
+        ValueError: If CSP is too large (potential DoS)
 
     Example:
         >>> parse_csp("default-src 'self'; script-src 'self' https://cdn.example.com")
@@ -180,22 +189,37 @@ def parse_csp(value: str) -> Dict[str, List[str]]:
             "script-src": ["'self'", "https://cdn.example.com"]
         }
     """
+    # Protect against DoS via extremely long CSP
+    MAX_CSP_LENGTH = 10000  # 10KB
+    if len(value) > MAX_CSP_LENGTH:
+        raise ValueError(f"CSP too long: {len(value)} bytes (max {MAX_CSP_LENGTH})")
+
     directives = {}
 
     # Split by semicolon to get individual directives
     for directive_str in value.split(";"):
         directive_str = directive_str.strip()
+
+        # Skip empty directives (e.g., ";;;" or trailing semicolon)
         if not directive_str:
             continue
 
         # Split directive into name and values
         parts = directive_str.split()
+
+        # Skip if no parts after splitting (e.g., all whitespace)
         if not parts:
+            continue
+
+        # Skip if directive has no name (e.g., " 'self'" with no directive name)
+        if not parts[0]:
             continue
 
         directive_name = parts[0].lower()
         directive_values = parts[1:] if len(parts) > 1 else []
 
+        # Handle duplicate directives: last one wins (standard CSP behavior per spec)
+        # If directive already exists, it will be overwritten
         directives[directive_name] = directive_values
 
     return directives
@@ -450,7 +474,18 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
         }
 
     # Parse CSP into directives
-    directives = parse_csp(value)
+    try:
+        directives = parse_csp(value)
+    except ValueError as e:
+        # CSP is malformed or too large
+        return {
+            "header_name": header_name,
+            "status": STATUS_BAD,
+            "severity": "medium",
+            "message": f"CSP header is malformed: {e}",
+            "actual_value": value,
+            "recommendation": "Fix CSP syntax errors and ensure policy is under 10KB",
+        }
 
     # Check for dangerous patterns
     dangerous_findings = check_csp_dangerous_patterns(directives, CONFIG)

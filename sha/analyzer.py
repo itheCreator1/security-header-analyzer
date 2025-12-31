@@ -60,9 +60,46 @@ See Also:
 from typing import Any, Dict, List, Union
 
 from .analyzers import ANALYZER_REGISTRY, get_all_header_keys
+from .config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
 # Type alias for finding result
 Finding = Dict[str, Any]
+
+# Define required keys for a valid Finding
+REQUIRED_FINDING_KEYS = {
+    "header_name", "status", "severity", "message", "actual_value", "recommendation"
+}
+
+
+def validate_finding(finding: Dict[str, Any], header_key: str) -> None:
+    """
+    Validate that a finding has all required keys and correct types.
+
+    Args:
+        finding: Finding dictionary to validate
+        header_key: Header key for error messages
+
+    Raises:
+        ValueError: If finding is missing required keys or has wrong types
+    """
+    if not isinstance(finding, dict):
+        raise ValueError(f"Analyzer for {header_key} returned non-dict: {type(finding)}")
+
+    missing_keys = REQUIRED_FINDING_KEYS - set(finding.keys())
+    if missing_keys:
+        raise ValueError(
+            f"Analyzer for {header_key} returned finding missing keys: {missing_keys}"
+        )
+
+    # Validate types
+    if not isinstance(finding["header_name"], str):
+        raise ValueError(f"header_name must be str, got {type(finding['header_name'])}")
+
+    if finding["status"] not in (STATUS_GOOD, STATUS_ACCEPTABLE, STATUS_BAD, STATUS_MISSING):
+        raise ValueError(f"Invalid status: {finding['status']}")
+
+    if not isinstance(finding["severity"], str):
+        raise ValueError(f"severity must be str, got {type(finding['severity'])}")
 
 
 def analyze_headers(headers: Dict[str, Union[str, List[str]]]) -> List[Finding]:
@@ -99,9 +136,33 @@ def analyze_headers(headers: Dict[str, Union[str, List[str]]]) -> List[Finding]:
         # Get the analyzer function from the registry
         analyzer_func = ANALYZER_REGISTRY[header_key]
 
-        # Run the analysis
-        finding = analyzer_func(header_value)
-        findings.append(finding)
+        # Validate analyzer is callable
+        if not callable(analyzer_func):
+            raise ValueError(f"Analyzer for {header_key} is not callable: {analyzer_func}")
+
+        try:
+            # Run the analysis
+            finding = analyzer_func(header_value)
+
+            # Validate finding structure
+            validate_finding(finding, header_key)
+
+            findings.append(finding)
+
+        except Exception as e:
+            # Log error and create error finding
+            import sys
+            print(f"Warning: Analyzer for {header_key} failed: {e}", file=sys.stderr)
+
+            # Create placeholder finding for failed analyzer
+            findings.append({
+                "header_name": header_key.replace("-", " ").title(),
+                "status": STATUS_MISSING,
+                "severity": "info",
+                "message": f"Analyzer error: {e}",
+                "actual_value": None,
+                "recommendation": "Please report this issue to the developers",
+            })
 
     return findings
 

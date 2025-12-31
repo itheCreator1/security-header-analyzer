@@ -62,11 +62,12 @@ from .analyzer import analyze_headers
 from .config import (
     DEFAULT_MAX_REDIRECTS,
     DEFAULT_TIMEOUT,
+    MAX_TIMEOUT,
     HTTPError,
     InvalidURLError,
     NetworkError,
 )
-from .fetcher import fetch_headers
+from .fetcher import fetch_headers_with_retry
 from .reporter import generate_report
 
 
@@ -140,6 +141,20 @@ Exit codes:
     )
 
     parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose output (show detailed progress)",
+    )
+
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Suppress all output except errors and final report",
+    )
+
+    parser.add_argument(
         "--debug",
         action="store_true",
         help="Enable debug mode (show full error tracebacks)",
@@ -154,8 +169,14 @@ Exit codes:
     args = parser.parse_args()
 
     # Validate arguments
+    if args.verbose and args.quiet:
+        parser.error("--verbose and --quiet are mutually exclusive")
+
     if args.timeout <= 0:
         parser.error("timeout must be positive")
+
+    if args.timeout > MAX_TIMEOUT:
+        parser.error(f"timeout cannot exceed {MAX_TIMEOUT} seconds")
 
     if args.max_redirects < 0:
         parser.error("max-redirects must be non-negative")
@@ -190,8 +211,8 @@ def main() -> NoReturn:
     output_format = "json" if args.json else "text"
 
     try:
-        # Fetch headers from URL
-        headers = fetch_headers(
+        # Fetch headers from URL (with retry logic for transient failures)
+        headers = fetch_headers_with_retry(
             url=url,
             timeout=args.timeout,
             follow_redirects=args.follow_redirects,
@@ -225,17 +246,24 @@ def main() -> NoReturn:
         # HTTP error responses (4xx, 5xx)
         # Special handling: if we got headers despite the error, still analyze them
         if e.headers:
-            print(
-                f"Warning: HTTP {e.status_code} error, but analyzing available headers",
-                file=sys.stderr,
-            )
+            try:
+                print(
+                    f"Warning: HTTP {e.status_code} error, but analyzing available headers",
+                    file=sys.stderr,
+                )
 
-            # Analyze the headers we did get
-            findings = analyze_headers(e.headers)
-            report = generate_report(url, findings, format=output_format)
-            print(report)
+                # Analyze the headers we did get
+                findings = analyze_headers(e.headers)
+                report = generate_report(url, findings, format=output_format)
+                print(report)
 
-            # Still exit with error code
+            except Exception as analyze_error:
+                # If analysis fails, report original HTTP error
+                print(f"Error: HTTP error - {e}", file=sys.stderr)
+                if args.debug:
+                    print(f"Analysis also failed: {analyze_error}", file=sys.stderr)
+
+            # Always exit with HTTP error code
             sys.exit(3)
         else:
             # No headers available

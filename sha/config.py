@@ -74,10 +74,14 @@ VERSION = "1.0.0"
 
 # HTTP Request Configuration
 DEFAULT_TIMEOUT = 10  # seconds
+MAX_TIMEOUT = 300  # 5 minutes maximum - prevents extremely long hangs
 DEFAULT_MAX_REDIRECTS = 5
 DEFAULT_USER_AGENT = (
     f"SecurityHeaderAnalyzer/{VERSION} (https://github.com/ThodorhsPerros/security-header-analyzer)"
 )
+
+# Report Schema Version
+SCHEMA_VERSION = "1.0.0"  # JSON report schema version for backwards compatibility
 
 # Private IP ranges for SSRF protection
 PRIVATE_IP_RANGES = [

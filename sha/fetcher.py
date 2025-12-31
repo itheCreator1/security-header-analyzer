@@ -319,9 +319,12 @@ def _normalize_headers_with_cookies(
                 if all_cookies and isinstance(all_cookies, list):
                     normalized_headers["set-cookie"] = all_cookies
                     return normalized_headers
-    except Exception:
-        # Silently ignore any errors accessing raw response
-        # This handles both real network errors and Mock objects in tests
+    except (AttributeError, TypeError, RuntimeError):
+        # Catch specific exceptions only:
+        # - AttributeError: Missing expected attribute
+        # - TypeError: Unexpected type
+        # - RuntimeError: Unexpected runtime error
+        # Silently continue to fallback - this handles Mock objects in tests
         pass
 
     # Fallback: get Set-Cookie from regular headers dict
@@ -332,8 +335,8 @@ def _normalize_headers_with_cookies(
         if cookie_value:
             # Wrap single cookie in list for consistency
             normalized_headers["set-cookie"] = [cookie_value]
-    except Exception:
-        # If even this fails (e.g., Mock object), just continue
+    except (AttributeError, KeyError):
+        # Catch specific exceptions only - if headers dict access fails, skip
         pass
 
     return normalized_headers
@@ -400,7 +403,18 @@ def fetch_headers(
             allow_redirects=follow_redirects,
         )
 
-        # DNS Rebinding Protection: Validate final URL after redirects
+        # DNS Rebinding Protection: Validate ALL redirects (not just final destination)
+        # This prevents SSRF via intermediate redirects
+        if follow_redirects and hasattr(response, 'history') and response.history:
+            try:
+                for redirect_response in response.history:
+                    if hasattr(redirect_response, 'url') and isinstance(redirect_response.url, str):
+                        validate_redirect_destination(redirect_response.url)
+            except (TypeError, AttributeError):
+                # Handle Mock objects or malformed response.history
+                pass
+
+        # Also validate final URL after redirects
         if (
             follow_redirects
             and hasattr(response, "url")
@@ -439,6 +453,98 @@ def fetch_headers(
 
     except requests.exceptions.RequestException as e:
         raise NetworkError(f"Request failed for {url}: {e}") from e
+
+
+def fetch_headers_with_retry(
+    url: str,
+    timeout: int = DEFAULT_TIMEOUT,
+    follow_redirects: bool = True,
+    max_redirects: int = DEFAULT_MAX_REDIRECTS,
+    user_agent: Optional[str] = None,
+    max_retries: int = 3,
+) -> Dict[str, Union[str, List[str]]]:
+    """
+    Fetch HTTP headers with retry logic and exponential backoff.
+
+    Retries on:
+    - 429 (Too Many Requests) - respects Retry-After header
+    - 503 (Service Unavailable) - respects Retry-After header
+    - Transient network errors (timeout, connection failures)
+
+    Args:
+        url: Target URL (will be normalized if no protocol specified)
+        timeout: Request timeout in seconds
+        follow_redirects: Whether to follow HTTP redirects
+        max_redirects: Maximum number of redirects to follow
+        user_agent: Custom User-Agent string (uses default if None)
+        max_retries: Maximum number of retry attempts (default: 3)
+
+    Returns:
+        Dictionary of headers with lowercase keys.
+        Most headers are str, but 'set-cookie' is List[str] to capture all cookies.
+
+    Raises:
+        InvalidURLError: If URL is invalid or unsafe (SSRF)
+        NetworkError: If network request fails after all retries
+        HTTPError: If server returns non-retryable error status code
+
+    Notes:
+        - Exponential backoff: 1s, 2s, 4s between retries
+        - Respects Retry-After header from server (capped at 60s)
+        - Does not retry on SSL errors or non-retryable HTTP errors
+    """
+    import time
+
+    last_error = None
+
+    for attempt in range(max_retries):
+        try:
+            return fetch_headers(
+                url=url,
+                timeout=timeout,
+                follow_redirects=follow_redirects,
+                max_redirects=max_redirects,
+                user_agent=user_agent,
+            )
+
+        except HTTPError as e:
+            # Retry on 429 (Too Many Requests) or 503 (Service Unavailable)
+            if e.status_code in (429, 503):
+                last_error = e
+
+                # Check for Retry-After header
+                retry_after = e.headers.get('retry-after')
+                if retry_after and retry_after.isdigit():
+                    wait_time = min(int(retry_after), 60)  # Cap at 60s
+                else:
+                    # Exponential backoff: 1s, 2s, 4s
+                    wait_time = 2 ** attempt
+
+                if attempt < max_retries - 1:
+                    time.sleep(wait_time)
+                    continue
+            # Don't retry on other HTTP errors (4xx, 5xx)
+            raise
+
+        except NetworkError as e:
+            # Retry on timeout or connection errors
+            error_str = str(e).lower()
+            if "timeout" in error_str or "connection" in error_str:
+                last_error = e
+                if attempt < max_retries - 1:
+                    # Exponential backoff: 1s, 2s, 4s
+                    wait_time = 2 ** attempt
+                    time.sleep(wait_time)
+                    continue
+            # Don't retry on SSL errors or other network issues
+            raise
+
+    # Max retries exceeded
+    if last_error:
+        raise last_error
+
+    # Should never reach here
+    raise NetworkError(f"Failed to fetch headers after {max_retries} attempts")
 
 
 def fetch_headers_safe(

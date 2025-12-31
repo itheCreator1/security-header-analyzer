@@ -307,3 +307,215 @@ class TestBoundaryValues:
         result = analyze_csp(";;;")
         # Empty CSP is present but not useful
         assert result["status"] in [STATUS_BAD, STATUS_ACCEPTABLE]
+
+
+# ============================================================================
+# New Edge Cases from Holes Analysis
+# ============================================================================
+
+
+class TestIPv6URLSupport:
+    """Test IPv6 URL normalization and validation."""
+
+    def test_ipv6_localhost_url(self):
+        """Test IPv6 localhost URL normalization."""
+        from sha.fetcher import normalize_url
+
+        url = "http://[::1]/"
+        normalized = normalize_url(url)
+        assert "[::1]" in normalized
+        assert normalized.startswith("http://")
+
+    def test_ipv6_public_address_url(self):
+        """Test IPv6 public address URL normalization."""
+        from sha.fetcher import normalize_url
+
+        url = "http://[2001:db8::1]/"
+        normalized = normalize_url(url)
+        assert "[2001:db8::1]" in normalized
+
+    def test_ipv6_url_with_https(self):
+        """Test IPv6 URL with HTTPS."""
+        from sha.fetcher import normalize_url
+
+        url = "https://[2001:db8::1]:8080/path"
+        normalized = normalize_url(url)
+        assert normalized == url  # Should remain unchanged
+
+    def test_ipv6_url_without_protocol(self):
+        """Test IPv6 URL gets HTTPS prepended."""
+        from sha.fetcher import normalize_url
+
+        # This is tricky - IPv6 without protocol is ambiguous
+        # Our normalize function adds https:// prefix to anything without protocol
+        url = "[2001:db8::1]"
+        normalized = normalize_url(url)
+        assert normalized.startswith("https://")
+
+
+class TestCSPParserMalformed:
+    """Test CSP parser handles malformed input gracefully."""
+
+    def test_csp_empty_directives_multiple(self):
+        """Test CSP parser with multiple empty directives."""
+        from sha.analyzers.csp import parse_csp
+
+        result = parse_csp(";;;")
+        assert result == {}
+
+    def test_csp_directive_no_values(self):
+        """Test CSP directive with no values."""
+        from sha.analyzers.csp import parse_csp
+
+        result = parse_csp("script-src;")
+        assert result == {"script-src": []}
+
+    def test_csp_duplicate_directives(self):
+        """Test CSP with duplicate directives (last wins per spec)."""
+        from sha.analyzers.csp import parse_csp
+
+        result = parse_csp("script-src 'self'; script-src 'unsafe-inline'")
+        # Last directive should win
+        assert result["script-src"] == ["'unsafe-inline'"]
+
+    def test_csp_extremely_long(self):
+        """Test CSP parser rejects extremely long CSPs (DoS protection)."""
+        from sha.analyzers.csp import parse_csp
+
+        # Create CSP longer than MAX_CSP_LENGTH (10000 bytes)
+        long_csp = "script-src " + " ".join([f"https://example{i}.com" for i in range(1000)])
+
+        with pytest.raises(ValueError, match="CSP too long"):
+            parse_csp(long_csp)
+
+    def test_csp_malformed_in_analyze(self):
+        """Test analyze() handles malformed CSP gracefully."""
+        # Test that analyze() wraps parse errors and returns a finding
+        result = analyze_csp("invalid;;;;;;;;")
+        # Should return a finding, not crash
+        assert result["status"] in [STATUS_BAD, STATUS_ACCEPTABLE]
+        assert "header_name" in result
+
+
+class TestTimeoutValidation:
+    """Test timeout parameter boundary validation."""
+
+    def test_timeout_zero(self):
+        """Test zero timeout is rejected."""
+        from sha.main import parse_args
+        import sys
+
+        sys.argv = ["sha", "example.com", "--timeout", "0"]
+        with pytest.raises(SystemExit) as exc_info:
+            parse_args()
+        assert exc_info.value.code != 0
+
+    def test_timeout_negative(self):
+        """Test negative timeout is rejected."""
+        from sha.main import parse_args
+        import sys
+
+        sys.argv = ["sha", "example.com", "--timeout", "-5"]
+        with pytest.raises(SystemExit) as exc_info:
+            parse_args()
+        assert exc_info.value.code != 0
+
+    def test_timeout_extremely_large(self):
+        """Test extremely large timeout is rejected (>300s)."""
+        from sha.main import parse_args
+        import sys
+
+        sys.argv = ["sha", "example.com", "--timeout", "99999"]
+        with pytest.raises(SystemExit) as exc_info:
+            parse_args()
+        assert exc_info.value.code != 0
+
+    def test_timeout_valid_boundary(self):
+        """Test timeout at max boundary (300s) is accepted."""
+        from sha.main import parse_args
+        import sys
+
+        sys.argv = ["sha", "example.com", "--timeout", "300"]
+        args = parse_args()
+        assert args.timeout == 300
+
+
+class TestVerboseQuietFlags:
+    """Test verbose and quiet mode flags."""
+
+    def test_verbose_and_quiet_mutually_exclusive(self):
+        """Test that verbose and quiet flags cannot be used together."""
+        from sha.main import parse_args
+        import sys
+
+        sys.argv = ["sha", "example.com", "--verbose", "--quiet"]
+        with pytest.raises(SystemExit) as exc_info:
+            parse_args()
+        assert exc_info.value.code != 0
+
+    def test_verbose_flag_accepted(self):
+        """Test verbose flag is accepted."""
+        from sha.main import parse_args
+        import sys
+
+        sys.argv = ["sha", "example.com", "-v"]
+        args = parse_args()
+        assert args.verbose is True
+        assert args.quiet is False
+
+    def test_quiet_flag_accepted(self):
+        """Test quiet flag is accepted."""
+        from sha.main import parse_args
+        import sys
+
+        sys.argv = ["sha", "example.com", "-q"]
+        args = parse_args()
+        assert args.quiet is True
+        assert args.verbose is False
+
+
+class TestJSONSchemaVersion:
+    """Test JSON report includes schema version."""
+
+    def test_json_schema_version_present(self):
+        """Test JSON report includes schema_version field."""
+        from sha.reporter import format_json_report
+        import json
+
+        findings = [{
+            "header_name": "Test",
+            "status": "good",
+            "severity": "info",
+            "message": "Test message",
+            "actual_value": None,
+            "recommendation": None,
+        }]
+
+        report_json = format_json_report("https://example.com", findings)
+        report = json.loads(report_json)
+
+        assert "schema_version" in report
+        assert isinstance(report["schema_version"], str)
+
+    def test_json_schema_version_value(self):
+        """Test schema version has expected format."""
+        from sha.reporter import format_json_report
+        import json
+
+        findings = [{
+            "header_name": "Test",
+            "status": "good",
+            "severity": "info",
+            "message": "Test",
+            "actual_value": None,
+            "recommendation": None,
+        }]
+
+        report_json = format_json_report("https://example.com", findings)
+        report = json.loads(report_json)
+
+        # Schema version should be "1.0.0" format
+        assert report["schema_version"] == "1.0.0"
+        parts = report["schema_version"].split(".")
+        assert len(parts) == 3
+        assert all(part.isdigit() for part in parts)

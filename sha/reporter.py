@@ -79,7 +79,7 @@ import json
 from datetime import datetime
 from typing import Any, Dict, List
 
-from .config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
+from .config import SCHEMA_VERSION, STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
 # Type alias for finding
 Finding = Dict[str, Any]
@@ -213,6 +213,7 @@ def format_json_report(url: str, findings: List[Finding]) -> str:
     summary = calculate_summary(findings)
 
     report = {
+        "schema_version": SCHEMA_VERSION,
         "url": url,
         "timestamp": get_timestamp(),
         "summary": summary,

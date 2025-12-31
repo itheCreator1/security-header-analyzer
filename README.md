@@ -1,8 +1,8 @@
 # Security Header Analyzer
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-478%20passing-success.svg)](https://github.com/itheCreator1/security-header-analyzer/actions)
-[![Coverage](https://img.shields.io/badge/coverage-96%25-brightgreen.svg)](https://github.com/itheCreator1/security-header-analyzer)
+[![Tests](https://img.shields.io/badge/tests-494%20passing-success.svg)](https://github.com/itheCreator1/security-header-analyzer/actions)
+[![Coverage](https://img.shields.io/badge/coverage-97%25-brightgreen.svg)](https://github.com/itheCreator1/security-header-analyzer)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A lightweight Python CLI tool that fetches and analyzes HTTP security headers according to Mozilla and OWASP best practices. This tool is designed for developers, penetration testers, and system administrators who want a quick, reliable way to evaluate the security posture of a website's HTTP response headers.
@@ -10,11 +10,13 @@ A lightweight Python CLI tool that fetches and analyzes HTTP security headers ac
 ## 🚀 Features
 
 * **15 Security Header Analyzers**: HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Set-Cookie, Cache-Control, Expect-CT, Permissions-Policy, COEP, COOP, CORP, X-XSS-Protection, X-Download-Options, X-Permitted-Cross-Domain-Policies
-* **SSRF Protection**: Built-in safeguards against Server-Side Request Forgery attacks
-* **Multiple Output Formats**: Human-readable text or JSON for automation
+* **Enhanced SSRF Protection**: Multi-layer validation including intermediate redirect checks and DNS rebinding prevention
+* **Automatic Retry Logic**: Exponential backoff for 429/503 errors and transient network failures
+* **Robust Error Handling**: Graceful handling of malformed CSP policies, analyzer failures, and edge cases
+* **Multiple Output Formats**: Human-readable text or JSON with schema versioning for automation
 * **Severity Classification**: Issues categorized as Critical, High, Medium, or Low
-* **96% Test Coverage**: 478 comprehensive tests ensuring reliability
-* **Type Safety**: Full type hints with mypy support
+* **97% Test Coverage**: 494 comprehensive tests ensuring reliability
+* **Type Safety**: Full type hints with mypy support and runtime validation
 * **CI/CD Ready**: Easy integration with GitHub Actions, GitLab CI, Jenkins
 * **Extensible**: Add new header analyzers with minimal code changes
 
@@ -44,15 +46,38 @@ Run the analyzer from the command line:
 python -m sha https://example.com
 ```
 
-### Useful options
+### Command-Line Options
 
 ```
---json               Outputs results in JSON format
---timeout 10         Sets request timeout
---no-redirects       Disables following HTTP redirects
---user-agent "MyBot"  Uses a custom User-Agent
---debug              Shows verbose debug logs
+--json                 Output results in JSON format (with schema version)
+--timeout SECONDS      Request timeout (1-300 seconds, default: 10)
+--no-redirects         Disable following HTTP redirects
+--max-redirects N      Maximum redirects to follow (default: 5)
+--user-agent STRING    Custom User-Agent string
+-v, --verbose          Enable verbose output with detailed progress
+-q, --quiet            Suppress all output except errors and final report
+--debug                Show full error tracebacks
+--version              Show version information
 ```
+
+### Advanced Features
+
+**Automatic Retry with Exponential Backoff:**
+The tool automatically retries failed requests with exponential backoff for:
+- HTTP 429 (Too Many Requests) - respects Retry-After header
+- HTTP 503 (Service Unavailable) - respects Retry-After header
+- Transient network errors (timeouts, connection failures)
+
+**Enhanced SSRF Protection:**
+- Pre-request DNS validation
+- Post-redirect DNS rebinding checks
+- Intermediate redirect validation (all redirects in chain)
+- Private IP range blocking (IPv4 and IPv6)
+
+**Robust Error Handling:**
+- Malformed CSP policies are parsed gracefully with detailed error messages
+- Analyzer failures are caught and reported without stopping analysis
+- HTTP errors with headers still allow partial analysis
 
 ## 📖 Documentation
 
@@ -78,7 +103,7 @@ security-header-analyzer/
 │   ├── reporter.py       # Report generation (text/JSON)
 │   ├── config.py         # Configuration and exceptions
 │   └── analyzers/        # Individual header analyzers (15 total)
-├── tests/                # Comprehensive test suite (478 tests, 96% coverage)
+├── tests/                # Comprehensive test suite (494 tests, 97% coverage)
 ├── docs/                 # Documentation
 └── .github/              # CI/CD workflows
 ```

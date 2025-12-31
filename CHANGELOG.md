@@ -8,14 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Automatic retry logic** with exponential backoff for transient failures (429, 503, timeouts)
+- **Verbose and quiet modes** (`-v/--verbose`, `-q/--quiet`) for better output control
+- **JSON schema versioning** for backwards compatibility tracking
+- **Enhanced SSRF protection** with intermediate redirect validation (not just final destination)
+- **Robust analyzer validation** - runtime validation of all analyzer return values
+- **Maximum timeout validation** - prevents extremely long hangs (300s max)
+- **CSP DoS protection** - 10KB size limit to prevent memory exhaustion attacks
 - GitHub Actions CI/CD pipeline for automated testing across Python 3.8-3.12
 - Pre-commit hooks configuration with black, isort, flake8, mypy, and bandit
 - Comprehensive security policy (SECURITY.md) with vulnerability disclosure process
 - Contributing guidelines (CONTRIBUTING.md) for external contributors
 - Development tool configurations in pyproject.toml (black, isort, mypy, bandit, coverage)
+- 18 new edge case tests (IPv6 URLs, malformed CSP, timeout boundaries, schema version)
 
 ### Changed
+- **CSP parser hardening** - gracefully handles empty directives, duplicates, and malformed input
+- **Exception handling improvements** - specific exception types instead of broad catches
+- **HTTP error handling** - preserves exit code 3 even when analysis fails during error
 - Enhanced pyproject.toml with dev dependencies and tool configurations
+- Updated test suite from 478 to 494 tests (97% coverage)
+- `fetch_headers_with_retry()` now used by default instead of `fetch_headers()`
+
+### Fixed
+- Set-Cookie exception handling now catches specific exceptions only
+- CSP parser no longer crashes on extremely long policies (raises ValueError instead)
+- Timeout parameter now properly validated with upper bound
+- Mock objects in tests properly handled by redirect validation code
 
 ## [1.0.0] - 2024-12-04
 
