@@ -312,6 +312,6 @@ def get_config(header_key: str) -> Dict[str, Any]:
 
 ## See Also
 
-- [Extensibility Guide](EXTENSIBILITY.md) - Step-by-step guide to adding analyzers
-- [Components](COMPONENTS.md) - Analyzer layer details
-- [System Design](SYSTEM_DESIGN.md) - Overall architecture
+- [Extensibility Guide](extensibility-guide.md) - Step-by-step guide to adding analyzers
+- [Components](components.md) - Analyzer layer details
+- [System Design](system-design.md) - Overall architecture

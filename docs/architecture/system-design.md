@@ -345,7 +345,7 @@ Config = Dict[str, Any]  # Consider TypedDict for type safety
 
 ## See Also
 
-- [Data Flow](DATA_FLOW.md) - Detailed request processing flow
-- [Components](COMPONENTS.md) - Individual component specifications
-- [Registry Pattern](REGISTRY_PATTERN.md) - Registry implementation details
-- [Extensibility](EXTENSIBILITY.md) - Adding new analyzers
+- [Data Flow](data-flow.md) - Detailed request processing flow
+- [Components](components.md) - Individual component specifications
+- [Registry Pattern](registry-pattern.md) - Registry implementation details
+- [Extensibility](extensibility-guide.md) - Adding new analyzers

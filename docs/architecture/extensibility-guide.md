@@ -509,7 +509,7 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
 
 ## See Also
 
-- [Registry Pattern](REGISTRY_PATTERN.md) - How registration works
-- [Components](COMPONENTS.md) - Analyzer layer details
+- [Registry Pattern](registry-pattern.md) - How registration works
+- [Components](components.md) - Analyzer layer details
 - [Testing Guide](../TESTING.md) - Testing best practices
 - [Contributing](../../CONTRIBUTING.md) - Development workflow

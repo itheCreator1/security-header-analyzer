@@ -287,6 +287,6 @@ Exit with code 2
 
 ## See Also
 
-- [System Design](SYSTEM_DESIGN.md) - Architecture overview
-- [Components](COMPONENTS.md) - Individual component details
-- [Security](SECURITY.md) - SSRF protection in fetcher
+- [System Design](system-design.md) - Architecture overview
+- [Components](components.md) - Individual component details
+- [Security](security-implementation.md) - SSRF protection in fetcher

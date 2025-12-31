@@ -23,17 +23,17 @@ CLI → Fetcher → Analyzer → Reporter
 
 ### Core Architecture
 
-- **[System Design](SYSTEM_DESIGN.md)** - High-level architecture and design patterns
+- **[System Design](system-design.md)** - High-level architecture and design patterns
   - Layer responsibilities
   - Component diagram
   - Design patterns used
 
-- **[Data Flow](DATA_FLOW.md)** - Pipeline pattern and request flow
+- **[Data Flow](data-flow.md)** - Pipeline pattern and request flow
   - End-to-end request processing
   - Data transformations
   - Error handling flow
 
-- **[Components](COMPONENTS.md)** - Detailed component specifications
+- **[Components](components.md)** - Detailed component specifications
   - CLI Layer (main.py)
   - Fetcher Layer (fetcher.py)
   - Analyzer Layer (analyzer.py)
@@ -42,24 +42,24 @@ CLI → Fetcher → Analyzer → Reporter
 
 ### Advanced Topics
 
-- **[Registry Pattern](REGISTRY_PATTERN.md)** - How analyzer registration works
+- **[Registry Pattern](registry-pattern.md)** - How analyzer registration works
   - ANALYZER_REGISTRY explained
   - CONFIG_REGISTRY explained
   - Benefits and trade-offs
 
-- **[Extensibility Guide](EXTENSIBILITY.md)** - Adding new analyzers
+- **[Extensibility Guide](extensibility-guide.md)** - Adding new analyzers
   - Step-by-step guide
   - Code templates
   - Testing patterns
   - Integration checklist
 
-- **[Security Architecture](SECURITY.md)** - SSRF protection implementation
+- **[Security Architecture](security-implementation.md)** - SSRF protection implementation
   - DNS validation flow
   - Redirect validation
   - TOCTOU vulnerability details
   - Mitigation strategies
 
-- **[Future Enhancements](FUTURE.md)** - Planned features and roadmap
+- **[Future Enhancements](future-roadmap.md)** - Planned features and roadmap
   - Plugin system
   - Async support
   - Batch mode
@@ -132,4 +132,4 @@ sha/
 - [API Documentation](../API.md) - Programmatic usage
 - [Analyzer Reference](../analyzer-reference.md) - Individual analyzer specs
 - [Testing Guide](../TESTING.md) - Running and writing tests
-- [Security Policy](../../SECURITY.md) - Vulnerability reporting
+- [Security Policy](../../security-implementation.md) - Vulnerability reporting

@@ -490,8 +490,8 @@ Defines SSRF protection lists:
 
 ## See Also
 
-- [System Design](SYSTEM_DESIGN.md) - Architecture overview
-- [Data Flow](DATA_FLOW.md) - Request processing pipeline
-- [Registry Pattern](REGISTRY_PATTERN.md) - Analyzer registration
-- [Extensibility](EXTENSIBILITY.md) - Adding new analyzers
-- [Security](SECURITY.md) - SSRF protection details
+- [System Design](system-design.md) - Architecture overview
+- [Data Flow](data-flow.md) - Request processing pipeline
+- [Registry Pattern](registry-pattern.md) - Analyzer registration
+- [Extensibility](extensibility-guide.md) - Adding new analyzers
+- [Security](security-implementation.md) - SSRF protection details

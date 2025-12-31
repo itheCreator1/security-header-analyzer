@@ -290,7 +290,7 @@ Want to implement one of these features?
 
 ## See Also
 
-- [Extensibility Guide](EXTENSIBILITY.md) - Adding analyzers
+- [Extensibility Guide](extensibility-guide.md) - Adding analyzers
 - [Architecture Overview](README.md) - Current architecture
 - [CHANGELOG](../../CHANGELOG.md) - Release history
 - [CONTRIBUTING](../../CONTRIBUTING.md) - Development guide

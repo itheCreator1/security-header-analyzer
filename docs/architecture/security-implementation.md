@@ -347,6 +347,6 @@ Security vulnerabilities should be reported according to [SECURITY.md](../../SEC
 ## See Also
 
 - [SECURITY.md](../../SECURITY.md) - Vulnerability reporting policy
-- [Components](COMPONENTS.md) - Fetcher layer details
-- [Data Flow](DATA_FLOW.md) - Request processing flow
+- [Components](components.md) - Fetcher layer details
+- [Data Flow](data-flow.md) - Request processing flow
 - [OWASP SSRF](https://owasp.org/www-community/attacks/Server_Side_Request_Forgery) - SSRF attack details
