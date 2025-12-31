@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Analyzer Enhancements
+- **CSP Analyzer:** Advanced bypass detection system with 12 common attack patterns
+  - JSONP endpoint detection (Google APIs, AngularJS CDN, AWS S3, Cloudflare, etc.)
+  - Angular/AngularJS template injection vulnerability detection
+  - Data URI bypass detection in script-src
+  - User-uploaded content domain detection (AWS S3 buckets)
+  - Missing base-uri validation (prevents base tag injection)
+  - Missing object-src validation (prevents Flash/plugin bypass)
+  - script-src 'self' with file upload capability warnings
+  - unsafe-hashes context validation
+  - script-src-elem without script-src detection
+  - Dangling markup injection detection
+  - Smart severity handling: HIGH severity bypasses trigger BAD status, LOW/MEDIUM provide recommendations
+  - 23 comprehensive tests for bypass detection
+  - Enhanced documentation with detailed attack scenarios for all 10+ bypass patterns
+
 ### Added
 - **Automatic retry logic** with exponential backoff for transient failures (429, 503, timeouts)
 - **Verbose and quiet modes** (`-v/--verbose`, `-q/--quiet`) for better output control

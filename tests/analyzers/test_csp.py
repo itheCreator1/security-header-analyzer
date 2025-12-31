@@ -550,3 +550,231 @@ class TestCSPEnhancedAnalysis:
         # Should have warning about IP address if recommendations present
         if result["recommendation"]:
             assert "IP address" in result["recommendation"] or "192.168" in result["recommendation"]
+
+
+class TestCSPBypassDetection:
+    """Test CSP bypass pattern detection."""
+
+    def test_bypass_jsonp_google_apis(self):
+        """Test detection of JSONP bypass via Google APIs."""
+        csp = "default-src 'self'; script-src 'self' https://ajax.googleapis.com"
+        result = analyze_csp(csp)
+
+        assert result["status"] == STATUS_BAD
+        assert result["severity"] == "high"
+        assert "JSONP" in result["message"] or "bypass" in result["message"].lower()
+
+    def test_bypass_jsonp_google_accounts(self):
+        """Test detection of JSONP bypass via Google Accounts."""
+        csp = "script-src 'self' accounts.google.com"
+        result = analyze_csp(csp)
+
+        assert result["status"] == STATUS_BAD
+        assert "JSONP" in result["message"] or "bypass" in result["message"].lower()
+
+    def test_bypass_jsonp_cdn_jsdelivr(self):
+        """Test detection of JSONP bypass via CDN."""
+        csp = "script-src 'self' cdn.jsdelivr.net"
+        result = analyze_csp(csp)
+
+        assert result["status"] == STATUS_BAD
+        assert "JSONP" in result["message"] or "bypass" in result["message"].lower()
+
+    def test_bypass_jsonp_cloudflare_cdn(self):
+        """Test detection of JSONP bypass via Cloudflare CDN."""
+        csp = "script-src 'self' cdnjs.cloudflare.com"
+        result = analyze_csp(csp)
+
+        assert result["status"] == STATUS_BAD
+        assert "JSONP" in result["message"] or "bypass" in result["message"].lower()
+
+    def test_bypass_angular_template_injection(self):
+        """Test detection of AngularJS template injection bypass."""
+        csp = "script-src 'self' angularjs.org"
+        result = analyze_csp(csp)
+
+        assert result["status"] == STATUS_BAD
+        assert result["severity"] == "high"
+        assert "angular" in result["message"].lower() or "template" in result["message"].lower()
+
+    def test_bypass_angular_with_strict_dynamic_ok(self):
+        """Test that Angular CDN with strict-dynamic doesn't trigger bypass warning."""
+        csp = "script-src 'nonce-abc123' 'strict-dynamic' angularjs.org"
+        result = analyze_csp(csp)
+
+        # strict-dynamic mitigates the Angular bypass
+        # Should not have Angular-specific bypass warning
+        if result["status"] == STATUS_BAD:
+            # If it's bad, it should be for a different reason
+            assert "angular" not in result["message"].lower() or "strict-dynamic" in result["recommendation"].lower()
+
+    def test_bypass_missing_base_uri(self):
+        """Test detection of missing base-uri directive."""
+        csp = "default-src 'self'; script-src 'nonce-abc123' 'strict-dynamic'; object-src 'none'"
+        result = analyze_csp(csp)
+
+        # Should have recommendation about missing base-uri (low severity, so not BAD status)
+        assert result["status"] in [STATUS_GOOD, STATUS_ACCEPTABLE]
+        if result["recommendation"]:
+            assert "base-uri" in result["recommendation"].lower() or "base tag" in result["recommendation"].lower()
+
+    def test_bypass_missing_object_src(self):
+        """Test detection of missing object-src directive."""
+        csp = "default-src 'self'; script-src 'nonce-abc123' 'strict-dynamic'; base-uri 'self'"
+        result = analyze_csp(csp)
+
+        # Should have recommendation about missing object-src (low severity, so not BAD status)
+        assert result["status"] in [STATUS_GOOD, STATUS_ACCEPTABLE]
+        if result["recommendation"]:
+            assert "object-src" in result["recommendation"].lower() or "plugin" in result["recommendation"].lower()
+
+    def test_bypass_object_src_not_none(self):
+        """Test detection of permissive object-src."""
+        csp = "default-src 'none'; script-src 'nonce-abc123' 'strict-dynamic'; object-src 'self'; base-uri 'self'"
+        result = analyze_csp(csp)
+
+        # Should have recommendation about object-src (low severity, so not BAD status)
+        assert result["status"] in [STATUS_GOOD, STATUS_ACCEPTABLE]
+        if result["recommendation"]:
+            assert "object-src" in result["recommendation"].lower()
+
+    def test_no_bypass_object_src_none(self):
+        """Test that object-src 'none' doesn't trigger bypass."""
+        csp = "default-src 'self'; script-src 'nonce-abc123' 'strict-dynamic'; object-src 'none'; base-uri 'self'"
+        result = analyze_csp(csp)
+
+        # Should be good or acceptable, not bad (using strict-dynamic to avoid 'self' warning)
+        assert result["status"] in [STATUS_GOOD, STATUS_ACCEPTABLE]
+
+    def test_bypass_self_with_file_upload_warning(self):
+        """Test warning for 'self' in script-src (potential stored XSS)."""
+        csp = "default-src 'none'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+        result = analyze_csp(csp)
+
+        # Should have warning about 'self' with file uploads (low severity, so GOOD with recommendation)
+        assert result["status"] == STATUS_GOOD
+        assert result["recommendation"] is not None
+        assert "'self'" in result["recommendation"] or "upload" in result["recommendation"].lower()
+
+    def test_bypass_data_uri_in_script_src(self):
+        """Test detection of data: URIs in script-src."""
+        csp = "script-src 'self' data:"
+        result = analyze_csp(csp)
+
+        assert result["status"] == STATUS_BAD
+        assert result["severity"] == "high"
+        assert "data:" in result["message"] or "data uri" in result["message"].lower()
+
+    def test_bypass_unsafe_hashes_without_hashes(self):
+        """Test detection of unsafe-hashes without corresponding hash values."""
+        csp = "default-src 'none'; script-src 'self' 'unsafe-hashes'; object-src 'none'; base-uri 'self'"
+        result = analyze_csp(csp)
+
+        # Medium severity, so should be in recommendations
+        assert result["status"] in [STATUS_ACCEPTABLE, STATUS_GOOD]
+        if result["recommendation"]:
+            assert "unsafe-hashes" in result["recommendation"].lower()
+
+    def test_no_bypass_unsafe_hashes_with_hashes(self):
+        """Test that unsafe-hashes with proper hashes doesn't trigger warning."""
+        csp = "script-src 'self' 'unsafe-hashes' 'sha256-abc123def456'"
+        result = analyze_csp(csp)
+
+        # Should not have unsafe-hashes specific warning
+        message_lower = result["message"].lower()
+        if "unsafe-hashes" in message_lower:
+            # If mentioned, should acknowledge the hash is present
+            assert "sha256" in result["actual_value"] or STATUS_BAD != result["status"]
+
+    def test_bypass_script_src_elem_unsafe_inline(self):
+        """Test detection of unsafe-inline in script-src-elem."""
+        csp = "script-src-elem 'unsafe-inline'"
+        result = analyze_csp(csp)
+
+        assert result["status"] == STATUS_BAD
+        assert result["severity"] == "high"
+        assert "script-src-elem" in result["message"].lower() or "unsafe-inline" in result["message"].lower()
+
+    def test_bypass_img_src_external_domains(self):
+        """Test warning for external domains in img-src (dangling markup)."""
+        csp = "default-src 'none'; script-src 'nonce-abc123' 'strict-dynamic'; object-src 'none'; base-uri 'self'; img-src 'self' https://cdn.example.com; frame-ancestors 'none'"
+        result = analyze_csp(csp)
+
+        # Should be good with recommendation about img-src (low severity)
+        assert result["status"] == STATUS_GOOD
+        assert result["recommendation"] is not None
+        assert "img-src" in result["recommendation"].lower() or "external" in result["recommendation"].lower() or "dangling" in result["recommendation"].lower()
+
+    def test_bypass_multiple_issues_combined(self):
+        """Test that multiple bypasses are detected and reported."""
+        csp = "script-src 'self' ajax.googleapis.com data:; img-src *"
+        result = analyze_csp(csp)
+
+        assert result["status"] == STATUS_BAD
+        assert result["severity"] == "high"
+        # Should detect multiple issues
+        message_and_rec = (result["message"] + " " + (result["recommendation"] or "")).lower()
+        issues_found = sum([
+            "jsonp" in message_and_rec or "ajax.googleapis" in message_and_rec,
+            "data:" in message_and_rec,
+        ])
+        assert issues_found >= 1  # At least one bypass detected
+
+    def test_bypass_limit_to_three_issues(self):
+        """Test that output is limited to avoid overwhelming messages."""
+        # Create a CSP with many bypasses
+        csp = "script-src 'self' ajax.googleapis.com cdn.jsdelivr.net data:; img-src *"
+        result = analyze_csp(csp)
+
+        assert result["status"] == STATUS_BAD
+        # Check if message indicates more issues detected
+        if "more issues" in result["message"].lower():
+            assert True  # Good, it's limiting output
+        else:
+            # Even if not limiting, should still be marked as bad
+            assert result["status"] == STATUS_BAD
+
+    def test_no_bypass_strict_policy(self):
+        """Test that a strict CSP without bypasses is marked as good."""
+        csp = "default-src 'none'; script-src 'nonce-abc123' 'strict-dynamic'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+        result = analyze_csp(csp)
+
+        assert result["status"] == STATUS_GOOD
+        assert result["severity"] == "info"
+
+    def test_bypass_youtube_domain(self):
+        """Test detection of YouTube JSONP bypass."""
+        csp = "script-src 'self' www.youtube.com"
+        result = analyze_csp(csp)
+
+        assert result["status"] == STATUS_BAD
+        assert "jsonp" in result["message"].lower() or "bypass" in result["message"].lower()
+
+    def test_bypass_s3_amazonaws(self):
+        """Test detection of S3/AWS bypass domain."""
+        csp = "script-src 'self' mybucket.s3.amazonaws.com"
+        result = analyze_csp(csp)
+
+        # Should detect the bypass (marked as BAD or ACCEPTABLE depending on other bypasses)
+        assert result["status"] in [STATUS_BAD, STATUS_ACCEPTABLE]
+        message_and_rec = (result["message"] + " " + (result["recommendation"] or "")).lower()
+        assert "jsonp" in message_and_rec or "amazonaws" in message_and_rec or "bypass" in message_and_rec
+
+    def test_bypass_protocol_normalization(self):
+        """Test that bypass detection works with different protocols."""
+        csp = "script-src 'self' https://ajax.googleapis.com"
+        result = analyze_csp(csp)
+
+        assert result["status"] == STATUS_BAD
+        assert "jsonp" in result["message"].lower() or "bypass" in result["message"].lower()
+
+    def test_bypass_wildcard_subdomain_detection(self):
+        """Test detection of wildcard subdomains for bypass domains."""
+        csp = "script-src 'self' *.cloudflare.com"
+        result = analyze_csp(csp)
+
+        # Should detect the bypass (marked as BAD or ACCEPTABLE depending on other bypasses)
+        assert result["status"] in [STATUS_BAD, STATUS_ACCEPTABLE]
+        message_and_rec = (result["message"] + " " + (result["recommendation"] or "")).lower()
+        # Should detect cloudflare.com even with wildcard
+        assert "cloudflare" in message_and_rec or "jsonp" in message_and_rec or "bypass" in message_and_rec

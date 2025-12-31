@@ -93,7 +93,7 @@ X-Content-Type-Options: nosniff
 
 **Module:** `sha/analyzers/csp.py`
 
-**Purpose:**  
+**Purpose:**
 Mitigates XSS and data injection attacks by controlling which resources can be loaded.
 
 **How It Works:**
@@ -102,23 +102,53 @@ Mitigates XSS and data injection attacks by controlling which resources can be l
 - Checks for wildcard sources (`*`)
 - Validates nonce/hash usage
 - Detects `strict-dynamic`
+- **NEW: Detects 12 common CSP bypass patterns:**
+  - JSONP endpoints (Google APIs, AngularJS CDN, AWS S3, Cloudflare, etc.)
+  - Angular/AngularJS template injection vulnerabilities
+  - User-uploaded content domains
+  - Missing `base-uri` (allows base tag injection)
+  - Missing/permissive `object-src` (Flash/plugin bypass)
+  - `script-src 'self'` with file upload capability (stored XSS)
+  - `unsafe-hashes` without proper context
+  - `data:` URIs in `script-src`
+  - `script-src-elem` without `script-src`
+  - Dangling markup injection via `img-src`
 
 **Severity Levels:**
 - Missing: CRITICAL
 - Contains unsafe-inline or unsafe-eval: HIGH
+- **HIGH severity bypasses (JSONP, data URIs, Angular):** HIGH
 - Wildcard sources: MEDIUM-HIGH
+- **LOW/MEDIUM severity bypasses (base-uri, object-src):** Recommendations only
 - Good configuration: INFO
 
 **Good Values:**
 ```
-Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-xyz'
-Content-Security-Policy: default-src 'none'; script-src 'strict-dynamic'
+Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-xyz'; base-uri 'self'; object-src 'none'
+Content-Security-Policy: default-src 'none'; script-src 'strict-dynamic' 'nonce-xyz'; base-uri 'none'
 ```
 
 **Bad Values:**
 ```
 Content-Security-Policy: default-src *
 Content-Security-Policy: script-src 'unsafe-inline'
+Content-Security-Policy: script-src 'self' https://ajax.googleapis.com (JSONP bypass)
+Content-Security-Policy: script-src 'self' data: (data URI bypass)
+```
+
+**Common Bypasses Detected:**
+```
+# JSONP bypass via Google APIs
+Content-Security-Policy: script-src 'self' https://accounts.google.com
+
+# Angular template injection
+Content-Security-Policy: script-src 'self' https://ajax.googleapis.com/ajax/libs/angularjs/
+
+# AWS S3 JSONP endpoints
+Content-Security-Policy: script-src 'self' https://mybucket.s3.amazonaws.com
+
+# Missing base-uri (recommended in addition to script-src)
+Content-Security-Policy: script-src 'self' 'nonce-xyz'
 ```
 
 ---

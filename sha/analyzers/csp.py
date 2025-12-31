@@ -436,6 +436,205 @@ def check_overly_broad_domains(directives: Dict[str, List[str]]) -> List[str]:
     return warnings
 
 
+def check_csp_bypasses(directives: Dict[str, List[str]]) -> List[Dict[str, str]]:
+    """
+    Detect common CSP bypass patterns that attackers exploit.
+
+    This function identifies specific misconfigurations that allow attackers to
+    bypass CSP protections, even when a CSP is present. These bypasses are well-
+    documented attack techniques used in real-world exploits.
+
+    Args:
+        directives: Parsed CSP directives
+
+    Returns:
+        List of bypass findings with severity, message, and recommendation
+
+    Bypass Patterns Detected:
+        1. JSONP endpoints (Google APIs, AngularJS CDN, etc.)
+        2. Angular/AngularJS template injection
+        3. User-uploaded content domains
+        4. CDNs with JSONP endpoints
+        5. Base-uri missing (allows base tag injection)
+        6. Object-src missing/permissive (Flash/plugin bypass)
+        7. Script-src with 'self' + file upload (stored XSS)
+        8. Unsafe-hashes without proper context
+        9. Script-src with data: URIs
+        10. Dangling markup injection via img-src
+
+    References:
+        - CSP Evaluator: https://csp-evaluator.withgoogle.com/
+        - CSP Bypass Techniques: https://book.hacktricks.xyz/pentesting-web/content-security-policy-csp-bypass
+        - Research: "CSP Is Dead, Long Live CSP!" (Weichselbaum et al., 2016)
+    """
+    bypasses = []
+
+    # Get relevant directives
+    script_src = directives.get("script-src", [])
+    default_src = directives.get("default-src", [])
+    object_src = directives.get("object-src", [])
+    base_uri = directives.get("base-uri", [])
+    img_src = directives.get("img-src", [])
+
+    # Effective script-src (script-src overrides default-src)
+    effective_script_src = script_src if script_src else default_src
+
+    # Known JSONP endpoints that allow CSP bypass
+    jsonp_bypass_domains = [
+        "accounts.google.com",
+        "www.google.com",
+        "ajax.googleapis.com",
+        "www.googletagmanager.com",
+        "www.google-analytics.com",
+        "maps.googleapis.com",
+        "maps.google.com",
+        "www.youtube.com",
+        "s.ytimg.com",
+        "accounts.youtube.com",
+        "oss.maxcdn.com",
+        "cdn.jsdelivr.net",
+        "cdnjs.cloudflare.com",
+        "code.jquery.com",
+        "ajax.aspnetcdn.com",
+        "angularjs.org",
+        "ajax.googleapis.com",  # AngularJS CDN
+        "*.cloudflare.com",
+        "*.amazonaws.com",
+        "*.s3.amazonaws.com",
+    ]
+
+    # BYPASS 1-4: Check for known JSONP bypass domains in script-src
+    for value in effective_script_src:
+        # Normalize value (remove protocols for comparison)
+        normalized = value.replace("https://", "").replace("http://", "")
+        # Also handle wildcard in value
+        normalized_no_wildcard = normalized.replace("*.", "")
+
+        for bypass_domain in jsonp_bypass_domains:
+            # Handle wildcards in bypass domain list
+            if bypass_domain.startswith("*."):
+                # Wildcard pattern - check if domain ends with the pattern
+                pattern = bypass_domain[2:]  # Remove *.
+                if normalized.endswith(pattern) or normalized.endswith(f".{pattern}") or normalized_no_wildcard.endswith(f".{pattern}"):
+                    bypasses.append({
+                        "severity": "high",
+                        "message": f"CSP allows {value} which has known JSONP endpoints that can bypass CSP",
+                        "recommendation": f"Remove {value} from script-src or use 'strict-dynamic' with nonces/hashes instead",
+                    })
+                    break  # Only report once per domain
+            else:
+                # Exact or subdomain match
+                if normalized_no_wildcard == bypass_domain or normalized_no_wildcard.endswith(f".{bypass_domain}"):
+                    bypasses.append({
+                        "severity": "high",
+                        "message": f"CSP allows {value} which has known JSONP endpoints that can bypass CSP",
+                        "recommendation": f"Remove {value} from script-src or use 'strict-dynamic' with nonces/hashes instead",
+                    })
+                    break  # Only report once per domain
+
+    # BYPASS 5: Check for AngularJS template injection via whitelisted Angular CDN
+    angular_domains = ["angularjs.org", "ajax.googleapis.com"]
+    for value in effective_script_src:
+        normalized = value.replace("https://", "").replace("http://", "").replace("*.", "")
+        for angular_domain in angular_domains:
+            if normalized == angular_domain or normalized.endswith(f".{angular_domain}"):
+                # Check if there's no strict-dynamic (which would prevent this)
+                if "'strict-dynamic'" not in effective_script_src:
+                    bypasses.append({
+                        "severity": "high",
+                        "message": f"CSP allows {value} which enables AngularJS template injection attacks",
+                        "recommendation": "Use 'strict-dynamic' with nonces, or remove AngularJS CDN from script-src",
+                    })
+                break
+
+    # BYPASS 6: Missing base-uri allows base tag injection
+    if not base_uri:
+        # base-uri defaults to * if not specified, allowing base tag injection
+        bypasses.append({
+            "severity": "medium",
+            "message": "CSP missing base-uri directive allows base tag injection attacks",
+            "recommendation": "Add base-uri 'self' or base-uri 'none' to prevent base tag injection",
+        })
+
+    # BYPASS 7: Missing or permissive object-src (Flash/plugin bypass)
+    if not object_src:
+        # object-src defaults to default-src, check if that's restrictive
+        if "'none'" not in default_src:
+            bypasses.append({
+                "severity": "medium",
+                "message": "CSP missing object-src directive allows Flash/plugin-based bypasses",
+                "recommendation": "Add object-src 'none' to block plugins",
+            })
+    elif "'none'" not in object_src:
+        bypasses.append({
+            "severity": "medium",
+            "message": "CSP object-src is not set to 'none', allowing Flash/plugin-based bypasses",
+            "recommendation": "Set object-src to 'none' to block all plugins",
+        })
+
+    # BYPASS 8: 'self' with user-uploaded content (stored XSS)
+    if "'self'" in effective_script_src:
+        # This is a warning, not a definitive bypass (depends on application)
+        bypasses.append({
+            "severity": "low",
+            "message": "CSP allows 'self' in script-src - vulnerable if application allows file uploads or JSONP endpoints on same domain",
+            "recommendation": "If application allows user-uploaded content, use 'strict-dynamic' with nonces instead of 'self'",
+        })
+
+    # BYPASS 9: data: URIs in script-src (allows inline script bypass)
+    if "data:" in effective_script_src:
+        bypasses.append({
+            "severity": "high",
+            "message": "CSP allows data: URIs in script-src, which can bypass CSP protections",
+            "recommendation": "Remove data: from script-src - use nonces or hashes for inline scripts instead",
+        })
+
+    # BYPASS 10: Dangling markup injection via permissive img-src
+    effective_img_src = img_src if img_src else default_src
+    if effective_img_src and "*" not in effective_img_src:
+        # Check if img-src allows external domains (potential for dangling markup)
+        external_domains = [v for v in effective_img_src if not v.startswith("'") and v != "data:"]
+        if external_domains:
+            bypasses.append({
+                "severity": "low",
+                "message": "CSP img-src allows external domains - potential for dangling markup injection to exfiltrate data",
+                "recommendation": "Restrict img-src to 'self' if possible, or use nonces for dynamic images",
+            })
+
+    # BYPASS 11: unsafe-hashes without proper configuration
+    if "'unsafe-hashes'" in effective_script_src:
+        # unsafe-hashes should only be used with specific hash values
+        has_hashes = any(v.startswith(("'sha256-", "'sha384-", "'sha512-")) for v in effective_script_src)
+        if not has_hashes:
+            bypasses.append({
+                "severity": "medium",
+                "message": "CSP uses 'unsafe-hashes' without corresponding hash values, which may not work as intended",
+                "recommendation": "Remove 'unsafe-hashes' or add specific hash values for inline event handlers",
+            })
+
+    # BYPASS 12: script-src-elem and script-src-attr confusion
+    script_src_elem = directives.get("script-src-elem", [])
+    script_src_attr = directives.get("script-src-attr", [])
+
+    if script_src_elem and "'unsafe-inline'" in script_src_elem:
+        if not (has_nonces_or_hashes(script_src_elem) or has_strict_dynamic(script_src_elem)):
+            bypasses.append({
+                "severity": "high",
+                "message": "CSP script-src-elem allows 'unsafe-inline' without nonces/hashes - allows inline script tags",
+                "recommendation": "Remove 'unsafe-inline' from script-src-elem or add nonces",
+            })
+
+    if script_src_attr and "'unsafe-inline'" not in script_src_attr and not script_src_attr:
+        # This is actually good, but worth noting
+        pass
+
+    # Sort by severity
+    severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    bypasses.sort(key=lambda x: severity_order.get(x["severity"], 99))
+
+    return bypasses
+
+
 def analyze(value: Optional[str]) -> Dict[str, Any]:
     """
     Analyze Content-Security-Policy header.
@@ -490,11 +689,26 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
     # Check for dangerous patterns
     dangerous_findings = check_csp_dangerous_patterns(directives, CONFIG)
 
-    if dangerous_findings:
-        # Found dangerous patterns
-        severity = dangerous_findings[0]["severity"]  # Use highest severity
-        messages = [f["message"] for f in dangerous_findings]
-        recommendations = [f["recommendation"] for f in dangerous_findings]
+    # Check for CSP bypass patterns
+    bypass_findings = check_csp_bypasses(directives)
+
+    # Combine dangerous patterns and bypasses, but only HIGH/CRITICAL severity ones for BAD status
+    critical_findings = dangerous_findings + [b for b in bypass_findings if b["severity"] in ["critical", "high"]]
+
+    # Keep low/medium severity bypasses for recommendations even if status is GOOD/ACCEPTABLE
+    low_severity_bypasses = [b for b in bypass_findings if b["severity"] in ["low", "medium"]]
+
+    if critical_findings:
+        # Found dangerous patterns or high-severity bypasses
+        severity = critical_findings[0]["severity"]  # Use highest severity
+        messages = [f["message"] for f in critical_findings]
+        recommendations = [f["recommendation"] for f in critical_findings]
+
+        # Limit to first 3 issues to avoid overwhelming output
+        if len(messages) > 3:
+            remaining = len(messages) - 3
+            messages = messages[:3] + [f"({remaining} more issues detected)"]
+            recommendations = recommendations[:3]
 
         return {
             "header_name": header_name,
@@ -517,6 +731,11 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
     if has_restrictive_default and has_security_directives:
         # Build recommendations for warnings even in GOOD status
         recommendations = []
+
+        # Add low-severity bypass recommendations
+        for bypass in low_severity_bypasses[:2]:  # Limit to 2
+            recommendations.append(bypass["recommendation"])
+
         if missing_directives:
             recommendations.append(
                 f"Consider adding specific directives: {', '.join(missing_directives)}"
@@ -535,6 +754,11 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
     elif has_restrictive_default or len(directives) >= 3:
         # Has some good directives but could be improved
         recommendations = []
+
+        # Add low-severity bypass recommendations
+        for bypass in low_severity_bypasses[:2]:  # Limit to 2
+            recommendations.append(bypass["recommendation"])
+
         if not has_security_directives:
             recommendations.append(CONFIG["recommendations"]["add_directives"])
         if missing_directives:
