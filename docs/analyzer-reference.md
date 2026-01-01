@@ -385,6 +385,79 @@ X-Permitted-Cross-Domain-Policies: by-ftp-filename
 
 ---
 
+### 13. Set-Cookie
+
+**Module:** `sha/analyzers/set_cookie.py`
+
+**Purpose:**
+Analyzes cookie security attributes to prevent session hijacking, XSS cookie theft, and CSRF attacks. Validates that cookies include proper security directives.
+
+**How It Works:**
+- Validates Secure, HttpOnly, and SameSite attributes
+- **NEW: Validates cookie prefix constraints (__Secure-, __Host-)**
+- **NEW: Analyzes Domain/Path scope for overly broad configurations**
+- **NEW: Detects sensitive cookies (session/auth) with missing security**
+- **NEW: Warns about excessive SameSite=None usage (third-party cookies)**
+- Handles multiple Set-Cookie headers
+- Provides aggregate analysis across all cookies
+
+**Severity Levels:**
+- Missing Secure or HttpOnly: HIGH
+- Missing SameSite or SameSite=None without Secure: MEDIUM
+- **Prefix violations (__Secure-/__Host- constraints):** HIGH
+- **Sensitive cookie without security attributes:** HIGH
+- **Overly broad Domain scope (e.g., "com"):** MEDIUM
+- **Domain with leading dot or Path=/ on sensitive cookies:** LOW (recommendation only)
+- Good configuration: INFO
+
+**Good Values:**
+```
+Set-Cookie: session=abc123; Secure; HttpOnly; SameSite=Strict; Path=/
+Set-Cookie: __Host-session=abc123; Secure; HttpOnly; SameSite=Strict; Path=/
+Set-Cookie: __Secure-token=xyz; Secure; HttpOnly; SameSite=Lax
+```
+
+**Bad Values:**
+```
+Set-Cookie: session=abc123
+Set-Cookie: __Secure-session=abc123; HttpOnly; SameSite=Strict  (missing Secure - violates prefix)
+Set-Cookie: __Host-session=abc123; Secure; HttpOnly; Domain=example.com  (has Domain - violates prefix)
+Set-Cookie: PHPSESSID=xyz  (sensitive cookie, no security attributes)
+Set-Cookie: tracking=123; Secure; HttpOnly; SameSite=None; Domain=com  (overly broad domain)
+```
+
+**Cookie Prefix Validation (RFC 6265bis):**
+- `__Secure-` prefix requires:
+  - Secure attribute
+- `__Host-` prefix requires:
+  - Secure attribute
+  - No Domain attribute
+  - Path=/ or omitted
+
+**Scope Analysis:**
+- Detects Domain with leading dot (applies to all subdomains)
+- Detects overly broad domains (e.g., "com", "co.uk")
+- Warns when sensitive cookies have Path=/ (exposed to entire site)
+
+**Sensitive Cookie Detection:**
+Detects cookies that appear to contain sensitive data based on name patterns:
+- Session identifiers: session, sess, sid, jsessionid, phpsessid
+- Authentication: auth, token, jwt, bearer, access, refresh
+- User identifiers: user, uid, userid
+- CSRF tokens: csrf, xsrf
+
+**SameSite=None Frequency Warning:**
+- Triggers when ≥50% of cookies use SameSite=None
+- Warns about third-party cookie privacy risks
+- Recommends evaluating necessity of cross-site cookie access
+
+**References:**
+- [RFC 6265bis Cookie Prefixes](https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-rfc6265bis)
+- [OWASP: Session Management](https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/06-Session_Management_Testing/02-Testing_for_Cookies_Attributes)
+- [MDN: Set-Cookie](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie)
+
+---
+
 ## Severity Level Guide
 
 - **CRITICAL**: Immediate security risk (currently unused)

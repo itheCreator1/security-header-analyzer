@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added - Analyzer Enhancements
+
+- **Set-Cookie Analyzer:** Enhanced validation with 4 new security features (Sprint 2)
+  - Cookie prefix validation (__Secure-, __Host-) per RFC 6265bis
+    - __Secure- prefix requires Secure attribute
+    - __Host- prefix requires Secure attribute, no Domain, Path=/
+  - Domain/Path scope analysis
+    - Detects overly broad domains (e.g., "com", "co.uk")
+    - Warns about Domain with leading dot (applies to subdomains)
+    - Flags Path=/ on sensitive cookies (exposed to entire site)
+  - Sensitive cookie pattern detection
+    - Detects session/auth/CSRF cookies by name pattern (14 patterns)
+    - Flags sensitive cookies missing BOTH Secure AND HttpOnly
+    - Patterns: session, auth, token, jwt, csrf, phpsessid, etc.
+  - SameSite=None frequency warnings
+    - Warns when ≥50% cookies use SameSite=None (third-party tracking risk)
+    - Privacy-focused recommendation for cross-site cookie usage
+  - 23 comprehensive tests covering all new features
+  - Smart severity handling: HIGH → BAD status, LOW → recommendations only
+  - 100% backward compatibility maintained (all 517 existing tests pass)
+
 - **CSP Analyzer:** Advanced bypass detection system with 12 common attack patterns
   - JSONP endpoint detection (Google APIs, AngularJS CDN, AWS S3, Cloudflare, etc.)
   - Angular/AngularJS template injection vulnerability detection

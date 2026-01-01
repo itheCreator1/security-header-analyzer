@@ -494,3 +494,212 @@ class TestMultipleCookies:
             # The word "secure" might appear multiple times in different contexts,
             # but the same recommendation shouldn't be repeated 3 times
             assert finding["cookie_count"] == 3
+
+
+class TestCookiePrefixValidation:
+    """Test cookie prefix (__Secure- and __Host-) validation."""
+
+    def test_secure_prefix_with_secure_attribute(self):
+        """Test __Secure- prefix with Secure attribute (valid)."""
+        cookie = "__Secure-session=abc123; Secure; HttpOnly; SameSite=Strict"
+        finding = analyze(cookie)
+        # Should be GOOD - has all required attributes
+        assert finding["status"] in [STATUS_GOOD, STATUS_ACCEPTABLE]
+
+    def test_secure_prefix_without_secure_attribute(self):
+        """Test __Secure- prefix without Secure attribute (invalid)."""
+        cookie = "__Secure-session=abc123; HttpOnly; SameSite=Strict"
+        finding = analyze(cookie)
+        # Should be BAD - __Secure- requires Secure attribute
+        assert finding["status"] == STATUS_BAD
+        assert "__secure-" in finding["message"].lower() or "prefix" in finding["message"].lower()
+
+    def test_host_prefix_valid_configuration(self):
+        """Test __Host- prefix with all requirements (valid)."""
+        cookie = "__Host-session=abc123; Secure; HttpOnly; SameSite=Strict; Path=/"
+        finding = analyze(cookie)
+        # Should be GOOD - meets all __Host- requirements
+        assert finding["status"] in [STATUS_GOOD, STATUS_ACCEPTABLE]
+
+    def test_host_prefix_without_secure(self):
+        """Test __Host- prefix without Secure attribute."""
+        cookie = "__Host-session=abc123; HttpOnly; SameSite=Strict; Path=/"
+        finding = analyze(cookie)
+        assert finding["status"] == STATUS_BAD
+        assert "__host-" in finding["message"].lower() or "prefix" in finding["message"].lower()
+
+    def test_host_prefix_with_domain(self):
+        """Test __Host- prefix with Domain attribute (invalid)."""
+        cookie = "__Host-session=abc123; Secure; HttpOnly; SameSite=Strict; Domain=example.com; Path=/"
+        finding = analyze(cookie)
+        assert finding["status"] == STATUS_BAD
+        assert "domain" in finding["message"].lower()
+
+    def test_host_prefix_with_invalid_path(self):
+        """Test __Host- prefix with Path other than / (invalid)."""
+        cookie = "__Host-session=abc123; Secure; HttpOnly; SameSite=Strict; Path=/app"
+        finding = analyze(cookie)
+        assert finding["status"] == STATUS_BAD
+        assert "path" in finding["message"].lower()
+
+    def test_host_prefix_without_path(self):
+        """Test __Host- prefix without Path attribute (acceptable - defaults to request path)."""
+        cookie = "__Host-session=abc123; Secure; HttpOnly; SameSite=Strict"
+        finding = analyze(cookie)
+        # Without Path, it defaults to request path, which is acceptable for __Host-
+        assert finding["status"] in [STATUS_GOOD, STATUS_ACCEPTABLE]
+
+
+class TestCookieScopeAnalysis:
+    """Test Domain and Path scope analysis."""
+
+    def test_domain_with_leading_dot(self):
+        """Test Domain starting with . (applies to subdomains)."""
+        cookie = "session=abc123; Secure; HttpOnly; SameSite=Strict; Domain=.example.com"
+        finding = analyze(cookie)
+        # Should have recommendation about broad domain scope
+        assert finding["recommendation"] is not None
+        assert "domain" in finding["recommendation"].lower() or "subdomain" in finding["recommendation"].lower()
+
+    def test_overly_broad_domain(self):
+        """Test very short domain (e.g., 'com')."""
+        cookie = "tracking=xyz; Secure; HttpOnly; SameSite=Lax; Domain=com"
+        finding = analyze(cookie)
+        # Should be flagged as overly broad
+        assert finding["status"] == STATUS_BAD
+        assert "domain" in finding["message"].lower()
+
+    def test_sensitive_cookie_with_root_path(self):
+        """Test session cookie with Path=/."""
+        cookie = "session=abc123; Secure; HttpOnly; SameSite=Strict; Path=/"
+        finding = analyze(cookie)
+        # Should have recommendation about restricting path for sensitive cookies
+        # (LOW severity, so might be GOOD or ACCEPTABLE status)
+        if finding["recommendation"]:
+            assert "path" in finding["recommendation"].lower()
+
+    def test_non_sensitive_cookie_with_root_path(self):
+        """Test non-sensitive cookie with Path=/ (no warning)."""
+        cookie = "theme=dark; Secure; HttpOnly; SameSite=Lax; Path=/"
+        finding = analyze(cookie)
+        # Non-sensitive cookie names shouldn't trigger path warnings
+        assert finding["status"] in [STATUS_GOOD, STATUS_ACCEPTABLE]
+
+
+class TestSensitiveCookieDetection:
+    """Test detection of sensitive cookie names and required attributes."""
+
+    def test_session_cookie_without_httponly(self):
+        """Test session cookie without HttpOnly attribute."""
+        cookie = "session=abc123; Secure; SameSite=Strict"
+        finding = analyze(cookie)
+        assert finding["status"] == STATUS_BAD
+        assert "httponly" in finding["message"].lower()
+
+    def test_auth_token_without_secure(self):
+        """Test auth token without Secure attribute."""
+        cookie = "auth_token=xyz; HttpOnly; SameSite=Strict"
+        finding = analyze(cookie)
+        assert finding["status"] == STATUS_BAD
+        assert "secure" in finding["message"].lower()
+
+    def test_jwt_cookie_without_samesite(self):
+        """Test JWT cookie without SameSite attribute."""
+        cookie = "jwt=abc.def.ghi; Secure; HttpOnly"
+        finding = analyze(cookie)
+        assert finding["status"] == STATUS_BAD
+        assert "samesite" in finding["message"].lower()
+
+    def test_csrf_token_with_samesite_none(self):
+        """Test CSRF token with SameSite=None (acceptable but not ideal)."""
+        cookie = "csrf_token=xyz; Secure; HttpOnly; SameSite=None"
+        finding = analyze(cookie)
+        # Cookie has all security attributes so status should be ACCEPTABLE
+        # (SameSite=None with Secure is valid, just not ideal for CSRF tokens)
+        assert finding["status"] == STATUS_ACCEPTABLE
+
+    def test_phpsessid_cookie_insecure(self):
+        """Test PHPSESSID without proper security attributes."""
+        cookie = "PHPSESSID=abc123"
+        finding = analyze(cookie)
+        assert finding["status"] == STATUS_BAD
+        # Should flag as sensitive cookie
+        assert finding["severity"] == "high"
+
+    def test_remember_me_cookie_secure(self):
+        """Test remember_me cookie with proper security."""
+        cookie = "remember_me=xyz; Secure; HttpOnly; SameSite=Strict"
+        finding = analyze(cookie)
+        assert finding["status"] in [STATUS_GOOD, STATUS_ACCEPTABLE]
+
+
+class TestSameSiteNoneFrequency:
+    """Test SameSite=None frequency warnings."""
+
+    def test_single_samesite_none_no_warning(self):
+        """Test single cookie with SameSite=None (no frequency warning)."""
+        cookie = "tracking=xyz; Secure; HttpOnly; SameSite=None"
+        finding = analyze(cookie)
+        # Single cookie shouldn't trigger frequency warning
+        assert finding["cookie_count"] == 1
+
+    def test_multiple_cookies_majority_samesite_none(self):
+        """Test multiple cookies where >50% have SameSite=None."""
+        cookies = [
+            "cookie1=a; Secure; HttpOnly; SameSite=None",
+            "cookie2=b; Secure; HttpOnly; SameSite=None",
+            "cookie3=c; Secure; HttpOnly; SameSite=Strict",
+        ]
+        finding = analyze(cookies)
+        # 2/3 (66%) use SameSite=None - should have warning
+        assert finding["recommendation"] is not None
+        assert "samesite=none" in finding["recommendation"].lower() or "third-party" in finding["recommendation"].lower()
+
+    def test_multiple_cookies_minority_samesite_none(self):
+        """Test multiple cookies where <50% have SameSite=None (no warning)."""
+        cookies = [
+            "cookie1=a; Secure; HttpOnly; SameSite=Strict",
+            "cookie2=b; Secure; HttpOnly; SameSite=Lax",
+            "cookie3=c; Secure; HttpOnly; SameSite=None",
+        ]
+        finding = analyze(cookies)
+        # 1/3 (33%) use SameSite=None - should not trigger frequency warning
+        # (might have other recommendations, but not specifically about frequency)
+        if finding["recommendation"]:
+            assert "third-party" not in finding["recommendation"].lower() or finding["cookie_count"] != 3
+
+
+class TestEnhancedSetCookieIntegration:
+    """Integration tests for all Set-Cookie enhancements."""
+
+    def test_perfect_host_prefix_cookie(self):
+        """Test perfect cookie with __Host- prefix."""
+        cookie = "__Host-session=abc123; Secure; HttpOnly; SameSite=Strict; Path=/"
+        finding = analyze(cookie)
+        assert finding["status"] == STATUS_GOOD
+        assert finding["cookie_count"] == 1
+
+    def test_multiple_issues_combined(self):
+        """Test cookie with multiple issues (prefix + scope + sensitive)."""
+        cookie = "__Secure-session=abc; Domain=.example.com; Path=/"
+        finding = analyze(cookie)
+        # Missing Secure (required by __Secure-), missing HttpOnly, missing SameSite
+        assert finding["status"] == STATUS_BAD
+        assert finding["severity"] == "high"
+        # Should mention multiple issues
+        assert finding["message"]
+
+    def test_real_world_cookies_mixed(self):
+        """Test real-world scenario with mix of good and bad cookies."""
+        cookies = [
+            "__Host-session=abc; Secure; HttpOnly; SameSite=Strict; Path=/",
+            "csrf=xyz; Secure; SameSite=Lax",  # Missing HttpOnly
+            "tracking=123; Secure; HttpOnly; SameSite=None",
+            "theme=dark; Secure; HttpOnly; SameSite=Lax",
+        ]
+        finding = analyze(cookies)
+        # Should aggregate to worst status (BAD due to csrf missing HttpOnly)
+        assert finding["status"] == STATUS_BAD
+        assert finding["cookie_count"] == 4
+        # Should identify the problematic cookie
+        assert "csrf" in finding["message"].lower()

@@ -243,6 +243,198 @@ def parse_set_cookie(value: str) -> Dict[str, Any]:
     return result
 
 
+def _validate_cookie_prefix(parsed: Dict[str, Any]) -> List[Dict[str, str]]:
+    """
+    Validate cookie name prefixes (__Secure- and __Host-).
+
+    Cookie prefixes are a security mechanism that enforces specific security
+    requirements when a cookie name starts with special prefixes.
+
+    Args:
+        parsed: Parsed cookie dictionary from parse_set_cookie()
+
+    Returns:
+        List of validation issues (empty if valid)
+
+    Prefix Rules:
+        __Secure- prefix requirements:
+            - Must have Secure attribute
+
+        __Host- prefix requirements:
+            - Must have Secure attribute
+            - Must NOT have Domain attribute
+            - Must have Path=/ (or no Path specified defaults to /)
+
+    References:
+        - RFC 6265bis Cookie Prefixes: https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-rfc6265bis
+        - MDN: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#cookie_prefixes
+    """
+    issues = []
+    cookie_name = parsed.get("cookie_name", "")
+
+    if not cookie_name:
+        return issues
+
+    # Check __Secure- prefix
+    if cookie_name.startswith("__Secure-"):
+        if not parsed["secure"]:
+            issues.append({
+                "severity": "high",
+                "message": f"Cookie '{cookie_name}' uses __Secure- prefix but missing Secure attribute",
+                "recommendation": "Add Secure attribute - __Secure- prefix requires Secure",
+            })
+
+    # Check __Host- prefix (more restrictive than __Secure-)
+    if cookie_name.startswith("__Host-"):
+        prefix_issues = []
+
+        if not parsed["secure"]:
+            prefix_issues.append("missing Secure attribute")
+
+        if parsed["domain"] is not None:
+            prefix_issues.append("has Domain attribute (not allowed)")
+
+        # Path must be / (or omitted, which defaults to request path but __Host- requires /)
+        path = parsed.get("path")
+        if path is not None and path != "/":
+            prefix_issues.append(f"has Path={path} (must be / or omitted)")
+
+        if prefix_issues:
+            issues.append({
+                "severity": "high",
+                "message": f"Cookie '{cookie_name}' uses __Host- prefix but {', '.join(prefix_issues)}",
+                "recommendation": "__Host- prefix requires: Secure attribute, no Domain attribute, Path=/ (or omitted)",
+            })
+
+    return issues
+
+
+def _analyze_cookie_scope(parsed: Dict[str, Any]) -> List[Dict[str, str]]:
+    """
+    Analyze Domain and Path scope for overly broad configurations.
+
+    Overly broad cookie scopes can expose cookies to more subdomains/paths
+    than necessary, increasing attack surface if any subdomain is compromised.
+
+    Args:
+        parsed: Parsed cookie dictionary
+
+    Returns:
+        List of scope warnings (empty if scope is appropriate)
+
+    Scope Issues Detected:
+        - Domain set to parent domain (exposes cookie to all subdomains)
+        - Path set to / (exposes cookie to entire site)
+        - Missing Domain (defaults to current domain, usually good)
+        - Domain starting with . (legacy syntax, applies to subdomains)
+    """
+    warnings = []
+    domain = parsed.get("domain")
+    path = parsed.get("path")
+    cookie_name = parsed.get("cookie_name", "unknown")
+
+    # Check Domain scope
+    if domain:
+        # Domain starting with "." applies to all subdomains (legacy syntax)
+        if domain.startswith("."):
+            warnings.append({
+                "severity": "low",
+                "message": f"Cookie '{cookie_name}' has Domain={domain} (applies to all subdomains)",
+                "recommendation": "Consider restricting to specific subdomain or omit Domain attribute",
+            })
+        # Very short domains (e.g., "com", "co.uk") are suspicious - this is VERY rare and likely a mistake
+        elif domain.count(".") == 0 or (domain.count(".") == 1 and len(domain) <= 6):
+            # Only flag truly problematic cases like "com" or "co.uk"
+            warnings.append({
+                "severity": "medium",
+                "message": f"Cookie '{cookie_name}' has overly broad Domain={domain}",
+                "recommendation": "Specify full domain or omit Domain attribute to restrict to current origin",
+            })
+
+    # Check Path scope
+    # Path=/ exposes cookie to entire site - warn for auth/session cookies
+    if path == "/" and _looks_like_sensitive_cookie(cookie_name):
+        warnings.append({
+            "severity": "low",
+            "message": f"Cookie '{cookie_name}' has Path=/ (exposed to entire site)",
+            "recommendation": "Consider restricting Path to specific application path (e.g., /app, /api)",
+        })
+
+    return warnings
+
+
+def _looks_like_sensitive_cookie(cookie_name: str) -> bool:
+    """
+    Detect if cookie name suggests it contains sensitive data.
+
+    Args:
+        cookie_name: Name of the cookie
+
+    Returns:
+        True if cookie name indicates sensitive data (session, auth, token, etc.)
+
+    Patterns Detected:
+        - Session identifiers: session, sess, sid, jsessionid, phpsessid
+        - Authentication: auth, token, jwt, bearer, access, refresh
+        - User identifiers: user, uid, userid
+        - CSRF tokens: csrf, xsrf
+    """
+    if not cookie_name:
+        return False
+
+    name_lower = cookie_name.lower()
+
+    sensitive_patterns = [
+        "session", "sess", "sid",
+        "auth", "token", "jwt", "bearer",
+        "access", "refresh",
+        "user", "uid", "userid",
+        "csrf", "xsrf",
+        "jsessionid", "phpsessid", "aspsessionid",
+        "remember", "login",
+    ]
+
+    return any(pattern in name_lower for pattern in sensitive_patterns)
+
+
+def _analyze_cookie_security(parsed: Dict[str, Any]) -> List[Dict[str, str]]:
+    """
+    Analyze cookie name patterns and flag potentially sensitive cookies without proper security.
+
+    This function ONLY reports issues for sensitive cookies that are missing
+    CRITICAL security attributes (Secure/HttpOnly). It does NOT duplicate
+    warnings for attributes that are already checked by the main validation logic.
+
+    Args:
+        parsed: Parsed cookie dictionary
+
+    Returns:
+        List of security warnings based on cookie name patterns
+    """
+    warnings = []
+    cookie_name = parsed.get("cookie_name", "")
+
+    if not cookie_name:
+        return warnings
+
+    # Check if cookie looks sensitive
+    if _looks_like_sensitive_cookie(cookie_name):
+        # Only report if BOTH Secure AND HttpOnly are missing
+        # (individual missing attributes are already reported by main logic)
+        has_secure = parsed["secure"]
+        has_httponly = parsed["httponly"]
+
+        # If sensitive cookie is completely unprotected (no Secure, no HttpOnly), flag it
+        if not has_secure and not has_httponly:
+            warnings.append({
+                "severity": "high",
+                "message": f"Cookie '{cookie_name}' appears to be sensitive (session/auth) but has no security attributes",
+                "recommendation": "Sensitive cookies should have Secure, HttpOnly, and SameSite=Strict attributes",
+            })
+
+    return warnings
+
+
 def _analyze_single_cookie(cookie_value: str) -> Dict[str, Any]:
     """
     Analyze a single Set-Cookie header value.
@@ -265,6 +457,37 @@ def _analyze_single_cookie(cookie_value: str) -> Dict[str, Any]:
     issues = []
     recommendations = []
 
+    # NEW: Check cookie prefix validation
+    prefix_issues = _validate_cookie_prefix(parsed)
+    for issue in prefix_issues:
+        issues.append(issue["message"])
+        recommendations.append(issue["recommendation"])
+
+    # NEW: Check cookie scope (domain/path)
+    scope_warnings = _analyze_cookie_scope(parsed)
+    has_medium_severity_scope_issue = False
+    for warning in scope_warnings:
+        if warning["severity"] == "medium":
+            has_medium_severity_scope_issue = True
+            issues.append(warning["message"])
+            recommendations.append(warning["recommendation"])
+        elif warning["severity"] == "low":
+            # LOW severity warnings go to recommendations only
+            recommendations.append(warning["recommendation"])
+
+    # NEW: Check cookie name patterns for sensitive cookies
+    security_warnings = _analyze_cookie_security(parsed)
+    has_high_severity_security_issue = False
+    for warning in security_warnings:
+        if warning["severity"] == "high":
+            has_high_severity_security_issue = True
+            issues.append(warning["message"])
+            recommendations.append(warning["recommendation"])
+        elif warning["severity"] in ["medium", "low"]:
+            # MEDIUM/LOW severity warnings go to recommendations only
+            recommendations.append(warning["recommendation"])
+
+    # Existing validation
     if not has_secure:
         issues.append("missing Secure attribute")
         recommendations.append(CONFIG["recommendations"]["no_secure"])
@@ -286,15 +509,24 @@ def _analyze_single_cookie(cookie_value: str) -> Dict[str, Any]:
         issues.append(f"very long Max-Age ({max_age} seconds, >{MAX_AGE_ONE_YEAR})")
         recommendations.append(CONFIG["recommendations"]["long_max_age"])
 
+    # Check if we have HIGH severity prefix violations
+    has_high_severity_prefix_issue = any(issue.get("severity") == "high" for issue in prefix_issues)
+
     # Determine status based on issues
-    if not has_secure or not has_httponly:
+    if has_high_severity_prefix_issue or has_high_severity_security_issue:
+        # Prefix violations or sensitive cookie issues are HIGH severity
+        status = STATUS_BAD
+        severity = "high"
+        message = f"Cookie {', '.join(issues)}"
+        recommendation = "; ".join(recommendations)
+    elif not has_secure or not has_httponly:
         # Critical security attributes missing
         status = STATUS_BAD
         severity = "high"
         message = f"Cookie {', '.join(issues)}"
         recommendation = "; ".join(recommendations)
-    elif samesite is None or (samesite == "None" and not has_secure):
-        # SameSite issues
+    elif samesite is None or (samesite == "None" and not has_secure) or has_medium_severity_scope_issue:
+        # SameSite issues or scope issues
         status = STATUS_BAD
         severity = "medium"
         message = f"Cookie {', '.join(issues)}"
@@ -310,7 +542,8 @@ def _analyze_single_cookie(cookie_value: str) -> Dict[str, Any]:
             status = STATUS_GOOD
             severity = "info"
             message = CONFIG["messages"][STATUS_GOOD]
-            recommendation = None
+            # Include LOW severity recommendations even for GOOD status
+            recommendation = "; ".join(recommendations) if recommendations else None
     elif samesite == "Lax" or (samesite == "None" and has_secure):
         # Acceptable configuration
         if max_age and max_age > CONFIG["validation"]["max_age_warning_threshold"]:
@@ -413,6 +646,9 @@ def analyze(value: Optional[Union[str, List[str]]]) -> Dict[str, Any]:
         if result["issues"]:
             for issue in result["issues"]:
                 all_issues.append(f"{cookie_name}: {issue}")
+
+        # Always collect recommendations (even if no issues - for LOW severity warnings)
+        if result["recommendations"]:
             all_recommendations.extend(result["recommendations"])
 
         # Update worst status
@@ -424,6 +660,17 @@ def analyze(value: Optional[Union[str, List[str]]]) -> Dict[str, Any]:
             worst_status = STATUS_ACCEPTABLE
             if severity_order.get(result["severity"], 0) > severity_order.get(worst_severity, 0):
                 worst_severity = result["severity"]
+
+    # NEW: Check for excessive SameSite=None usage (third-party cookie risk)
+    samesite_none_count = sum(1 for r in cookie_results if r.get("samesite") == "None")
+    if samesite_none_count > 0 and cookie_count > 1:
+        # If more than 50% of cookies use SameSite=None, warn about third-party cookie risks
+        none_percentage = (samesite_none_count / cookie_count) * 100
+        if none_percentage >= 50:
+            all_recommendations.append(
+                f"{samesite_none_count}/{cookie_count} cookies use SameSite=None (third-party cookies) - "
+                "Consider if cross-site cookie access is necessary for all cookies"
+            )
 
     # Build final message
     if all_issues:
@@ -437,7 +684,8 @@ def analyze(value: Optional[Union[str, List[str]]]) -> Dict[str, Any]:
             message = CONFIG["messages"][worst_status]
         else:
             message = f"All {cookie_count} cookies have secure attributes"
-        recommendation = None
+        # Include recommendations even if no issues (LOW severity warnings)
+        recommendation = "; ".join(set(all_recommendations)) if all_recommendations else None
 
     # Create actual_value summary
     if cookie_count == 1:
