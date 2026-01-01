@@ -458,6 +458,118 @@ Detects cookies that appear to contain sensitive data based on name patterns:
 
 ---
 
+### 14. Cache-Control
+
+**Module:** `sha/analyzers/cache_control.py`
+
+**Purpose:**
+Controls caching behavior to prevent sensitive data leakage through browser and proxy caches. Ensures that sensitive pages (login forms, account details, personal data) are not cached where unauthorized parties could access them.
+
+**How It Works:**
+- Parses Cache-Control directives (no-store, no-cache, must-revalidate, private, public, max-age)
+- **NEW: Detects directive conflicts (mutually exclusive or redundant combinations)**
+- **NEW: Validates must-revalidate usage for long cache durations**
+- **NEW: Supports stale-while-revalidate and stale-if-error directives**
+- Evaluates appropriateness for sensitive vs. static content
+
+**Severity Levels:**
+- Missing (for sensitive pages): MEDIUM
+- **Directive conflicts (public+private, no-store+max-age):** MEDIUM (conflicts trigger BAD status)
+- Long max-age without must-revalidate: LOW (recommendation only)
+- Good configuration: INFO
+
+**Good Values (Sensitive Pages):**
+```
+Cache-Control: no-store, no-cache, must-revalidate, private
+Cache-Control: no-store, private
+```
+
+**Good Values (Static Resources):**
+```
+Cache-Control: public, max-age=31536000, immutable
+Cache-Control: public, max-age=604800, must-revalidate
+```
+
+**Acceptable Values:**
+```
+Cache-Control: private, max-age=0
+Cache-Control: max-age=604800  (without must-revalidate - gets recommendation)
+```
+
+**Bad Values:**
+```
+Cache-Control: public, max-age=86400  (for sensitive data)
+Cache-Control: public, private  (mutually exclusive - CONFLICT)
+Cache-Control: no-store, max-age=3600  (max-age redundant with no-store - CONFLICT)
+Cache-Control: no-store, no-cache  (no-cache redundant with no-store - CONFLICT)
+Cache-Control: private, s-maxage=3600  (s-maxage inapplicable with private - CONFLICT)
+```
+
+**Directive Conflicts Detected:**
+
+1. **public + private (Mutually Exclusive)** - MEDIUM severity
+   ```
+   Cache-Control: public, private
+   # Recommendation: Remove either 'public' or 'private' - use 'private' for sensitive data
+   ```
+
+2. **no-store + max-age (Redundant)** - LOW severity
+   ```
+   Cache-Control: no-store, max-age=3600
+   # Recommendation: Remove 'max-age' - 'no-store' already prevents caching
+   ```
+
+3. **no-store + no-cache (Redundant)** - LOW severity
+   ```
+   Cache-Control: no-store, no-cache
+   # Recommendation: Remove 'no-cache' - 'no-store' is stronger
+   ```
+
+4. **private + s-maxage (Inapplicable)** - LOW severity
+   ```
+   Cache-Control: private, s-maxage=3600
+   # Recommendation: Remove 's-maxage' - only applies to shared caches, inapplicable with 'private'
+   ```
+
+**must-revalidate Validation:**
+
+Warns when long cache durations (>1 day) are used without must-revalidate or immutable:
+```
+Cache-Control: max-age=604800  (7 days)
+# Recommendation: Consider adding 'must-revalidate' to prevent serving stale content if origin is unreachable
+```
+
+This prevents browsers from serving very stale content when the origin server is unreachable.
+
+**Modern Stale-* Directives:**
+
+Supports RFC 5861 stale-while-revalidate and stale-if-error:
+```
+Cache-Control: max-age=600, stale-while-revalidate=30
+Cache-Control: max-age=600, stale-if-error=86400
+```
+
+These directives enable graceful degradation by allowing slightly stale content to be served while revalidating in the background.
+
+**Common Use Cases:**
+
+| Content Type | Recommended Configuration |
+|--------------|---------------------------|
+| Login pages | `no-store, private` |
+| Account pages | `no-store, no-cache, must-revalidate, private` |
+| API responses (sensitive) | `no-store, private` |
+| Static assets (versioned) | `public, max-age=31536000, immutable` |
+| Static assets (unversioned) | `public, max-age=3600, must-revalidate` |
+| Dynamic content (public) | `public, max-age=60, must-revalidate` |
+
+**References:**
+- [MDN: Cache-Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control)
+- [RFC 7234: HTTP Caching](https://datatracker.ietf.org/doc/html/rfc7234)
+- [RFC 5861: HTTP stale-while-revalidate](https://datatracker.ietf.org/doc/html/rfc5861)
+- [OWASP: Session Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html#web-content-caching)
+
+---
+
 ## Severity Level Guide
 
 - **CRITICAL**: Immediate security risk (currently unused)
