@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added - Analyzer Enhancements
 
+- **Cache-Control Analyzer:** Enhanced validation with 3 new security features (Sprint 3)
+  - Directive conflict detection
+    - Detects public + private (mutually exclusive)
+    - Detects no-store + max-age (max-age redundant)
+    - Detects no-store + no-cache (no-cache redundant)
+    - Detects private + s-maxage (s-maxage inapplicable)
+    - MEDIUM severity conflicts trigger BAD status
+  - must-revalidate validation
+    - Warns when max-age > 1 day without must-revalidate or immutable
+    - Prevents serving very stale content when origin is unreachable
+    - LOW severity recommendations for long cache durations
+  - stale-while-revalidate and stale-if-error support
+    - Parses and validates modern caching directives
+    - Enables graceful degradation and performance optimization
+  - 19 comprehensive tests covering all new features
+  - Smart severity handling: MEDIUM → BAD status, LOW → recommendations only
+  - 100% backward compatibility maintained (all 43 existing tests pass)
+
 - **Set-Cookie Analyzer:** Enhanced validation with 4 new security features (Sprint 2)
   - Cookie prefix validation (__Secure-, __Host-) per RFC 6265bis
     - __Secure- prefix requires Secure attribute

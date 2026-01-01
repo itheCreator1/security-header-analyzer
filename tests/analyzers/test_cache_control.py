@@ -322,3 +322,165 @@ class TestCacheControlEdgeCases:
 
         # May or may not parse correctly, should handle gracefully
         assert finding["status"] != STATUS_MISSING
+
+
+class TestCacheControlEnhancements:
+    """Test enhanced Cache-Control features (Sprint 3)."""
+
+    def test_parse_stale_while_revalidate(self):
+        """Test parsing stale-while-revalidate directive."""
+        parsed = parse_cache_control("max-age=3600, stale-while-revalidate=86400")
+
+        assert parsed["max_age"] == 3600
+        assert parsed["stale_while_revalidate"] == 86400
+
+    def test_parse_stale_if_error(self):
+        """Test parsing stale-if-error directive."""
+        parsed = parse_cache_control("max-age=3600, stale-if-error=86400")
+
+        assert parsed["max_age"] == 3600
+        assert parsed["stale_if_error"] == 86400
+
+    def test_parse_both_stale_directives(self):
+        """Test parsing both stale directives."""
+        parsed = parse_cache_control(
+            "max-age=3600, stale-while-revalidate=86400, stale-if-error=604800"
+        )
+
+        assert parsed["max_age"] == 3600
+        assert parsed["stale_while_revalidate"] == 86400
+        assert parsed["stale_if_error"] == 604800
+
+    def test_public_private_conflict(self):
+        """Test public + private conflict (mutually exclusive)."""
+        finding = analyze("public, private")
+
+        assert finding["status"] == STATUS_BAD
+        assert finding["severity"] == "medium"
+        assert "mutually exclusive" in finding["message"].lower()
+        assert "recommendation" in finding
+        assert finding["recommendation"] is not None
+
+    def test_no_store_max_age_conflict(self):
+        """Test no-store + max-age conflict (max-age redundant)."""
+        finding = analyze("no-store, max-age=3600")
+
+        assert finding["status"] == STATUS_GOOD
+        assert finding["recommendation"] is not None
+        assert "remove" in finding["recommendation"].lower() or "redundant" in finding["recommendation"].lower()
+
+    def test_private_s_maxage_conflict(self):
+        """Test private + s-maxage conflict."""
+        finding = analyze("private, s-maxage=3600")
+
+        assert finding["status"] == STATUS_ACCEPTABLE
+        assert finding["recommendation"] is not None
+        assert "s-maxage" in finding["recommendation"].lower()
+
+    def test_no_store_no_cache_conflict(self):
+        """Test no-store + no-cache conflict (no-cache redundant)."""
+        finding = analyze("no-store, no-cache")
+
+        assert finding["status"] == STATUS_GOOD
+        assert finding["recommendation"] is not None
+        assert "remove" in finding["recommendation"].lower() or "redundant" in finding["recommendation"].lower()
+
+    def test_long_max_age_without_must_revalidate(self):
+        """Test long max-age without must-revalidate (>1 day)."""
+        finding = analyze("max-age=604800")  # 7 days
+
+        assert finding["status"] == STATUS_ACCEPTABLE
+        assert finding["recommendation"] is not None
+        assert "must-revalidate" in finding["recommendation"].lower()
+
+    def test_long_max_age_with_must_revalidate(self):
+        """Test long max-age WITH must-revalidate (no warning)."""
+        finding = analyze("max-age=604800, must-revalidate")  # 7 days
+
+        assert finding["status"] == STATUS_ACCEPTABLE
+        # Should not have must-revalidate warning since it's present
+        if finding["recommendation"]:
+            assert "must-revalidate" not in finding["recommendation"].lower() or "consider adding 'private'" in finding["recommendation"].lower()
+
+    def test_long_max_age_with_immutable(self):
+        """Test long max-age WITH immutable (no must-revalidate needed)."""
+        finding = analyze("max-age=31536000, immutable")  # 1 year
+
+        assert finding["status"] == STATUS_ACCEPTABLE
+        # Should not have must-revalidate warning since immutable is present
+        if finding["recommendation"]:
+            assert "must-revalidate" not in finding["recommendation"].lower() or "consider adding 'private'" in finding["recommendation"].lower()
+
+    def test_short_max_age_no_must_revalidate_warning(self):
+        """Test short max-age doesn't trigger must-revalidate warning."""
+        finding = analyze("max-age=3600")  # 1 hour
+
+        # Should not have must-revalidate warning for short max-age
+        if finding["recommendation"]:
+            assert "must-revalidate" not in finding["recommendation"].lower() or "consider adding 'private'" in finding["recommendation"].lower()
+
+    def test_multiple_conflicts_combined(self):
+        """Test multiple conflicts reported together."""
+        finding = analyze("public, private, s-maxage=3600")
+
+        assert finding["status"] == STATUS_BAD
+        assert finding["severity"] == "medium"
+        assert finding["recommendation"] is not None
+        # Should have both public+private conflict and private+s-maxage conflict
+        assert "remove" in finding["recommendation"].lower()
+
+    def test_stale_directives_in_real_world_config(self):
+        """Test stale directives don't break analysis."""
+        finding = analyze("max-age=3600, stale-while-revalidate=60")
+
+        assert finding["status"] in [STATUS_ACCEPTABLE, STATUS_BAD]
+        assert "stale" not in finding["message"].lower()  # Stale directives shouldn't affect status message
+
+    def test_no_conflicts_no_extra_recommendations(self):
+        """Test that no conflicts means no extra recommendations for good config."""
+        finding = analyze("no-store")
+
+        assert finding["status"] == STATUS_GOOD
+        # Should have no recommendations if no conflicts
+        # (or only low severity warnings if any)
+
+    def test_conflict_with_public_caching(self):
+        """Test conflict detection still works with public caching."""
+        finding = analyze("public, max-age=3600, private")
+
+        assert finding["status"] == STATUS_BAD
+        assert finding["severity"] == "medium"
+        assert "mutually exclusive" in finding["message"].lower()
+
+
+class TestCacheControlMustRevalidate:
+    """Test must-revalidate specific scenarios."""
+
+    def test_must_revalidate_with_no_store(self):
+        """Test must-revalidate with no-store (doesn't apply)."""
+        finding = analyze("no-store, must-revalidate")
+
+        assert finding["status"] == STATUS_GOOD
+        # Should not have must-revalidate issues since no-store prevents caching
+
+    def test_must_revalidate_with_no_cache(self):
+        """Test must-revalidate with no-cache (doesn't apply)."""
+        finding = analyze("no-cache, must-revalidate")
+
+        assert finding["status"] == STATUS_ACCEPTABLE
+        # Should not have must-revalidate issues since no-cache requires revalidation
+
+    def test_max_age_exactly_one_day_threshold(self):
+        """Test max-age exactly at 1 day threshold."""
+        finding = analyze("max-age=86400")  # Exactly 1 day
+
+        assert finding["status"] == STATUS_ACCEPTABLE
+        # At threshold, should not trigger warning
+
+    def test_max_age_just_over_one_day(self):
+        """Test max-age just over 1 day threshold."""
+        finding = analyze("max-age=86401")  # 1 day + 1 second
+
+        assert finding["status"] == STATUS_ACCEPTABLE
+        assert finding["recommendation"] is not None
+        assert "must-revalidate" in finding["recommendation"].lower()

@@ -161,6 +161,8 @@ def parse_cache_control(value: str) -> Dict[str, Any]:
         - must_revalidate: bool
         - proxy_revalidate: bool
         - no_transform: bool
+        - stale_while_revalidate: int or None (in seconds)
+        - stale_if_error: int or None (in seconds)
 
     Example:
         >>> parse_cache_control("no-store, private")
@@ -177,6 +179,8 @@ def parse_cache_control(value: str) -> Dict[str, Any]:
         "must_revalidate": False,
         "proxy_revalidate": False,
         "no_transform": False,
+        "stale_while_revalidate": None,
+        "stale_if_error": None,
     }
 
     # Split by comma and parse each directive
@@ -203,6 +207,16 @@ def parse_cache_control(value: str) -> Dict[str, Any]:
                     result["s_maxage"] = int(dir_value)
                 except ValueError:
                     pass
+            elif dir_name == "stale-while-revalidate":
+                try:
+                    result["stale_while_revalidate"] = int(dir_value)
+                except ValueError:
+                    pass
+            elif dir_name == "stale-if-error":
+                try:
+                    result["stale_if_error"] = int(dir_value)
+                except ValueError:
+                    pass
         else:
             # Boolean directives
             if directive == "no-store":
@@ -223,6 +237,103 @@ def parse_cache_control(value: str) -> Dict[str, Any]:
                 result["no_transform"] = True
 
     return result
+
+
+def detect_directive_conflicts(parsed: Dict[str, Any]) -> List[Dict[str, str]]:
+    """
+    Detect conflicting Cache-Control directives.
+
+    Directive conflicts occur when mutually exclusive or contradictory
+    directives are specified together, creating ambiguous caching behavior.
+
+    Args:
+        parsed: Parsed cache control dictionary
+
+    Returns:
+        List of conflict findings with severity, message, and recommendation
+
+    Conflicts Detected:
+        - public + private (mutually exclusive)
+        - no-store + max-age (no-store overrides max-age, max-age is redundant)
+        - no-cache + only-if-cached (contradictory intent)
+        - private + s-maxage (s-maxage only applies to shared caches)
+    """
+    conflicts = []
+
+    # CONFLICT 1: public + private (mutually exclusive)
+    if parsed["public"] and parsed["private"]:
+        conflicts.append({
+            "severity": "medium",
+            "message": "Cache-Control contains both 'public' and 'private' (mutually exclusive)",
+            "recommendation": "Remove either 'public' or 'private' - use 'private' for sensitive data",
+        })
+
+    # CONFLICT 2: no-store + max-age (no-store overrides, max-age is redundant)
+    if parsed["no_store"] and parsed["max_age"] is not None:
+        conflicts.append({
+            "severity": "low",
+            "message": "Cache-Control contains both 'no-store' and 'max-age' (max-age is redundant with no-store)",
+            "recommendation": "Remove 'max-age' directive - 'no-store' already prevents caching",
+        })
+
+    # CONFLICT 3: private + s-maxage (s-maxage only applies to shared caches)
+    if parsed["private"] and parsed["s_maxage"] is not None:
+        conflicts.append({
+            "severity": "low",
+            "message": "Cache-Control contains both 'private' and 's-maxage' (s-maxage only applies to shared caches)",
+            "recommendation": "Remove 's-maxage' directive - 'private' already prevents shared caching",
+        })
+
+    # CONFLICT 4: no-store + no-cache (no-store is stronger, no-cache is redundant)
+    if parsed["no_store"] and parsed["no_cache"]:
+        conflicts.append({
+            "severity": "low",
+            "message": "Cache-Control contains both 'no-store' and 'no-cache' (no-cache is redundant with no-store)",
+            "recommendation": "Remove 'no-cache' directive - 'no-store' already prevents caching",
+        })
+
+    return conflicts
+
+
+def detect_must_revalidate_issues(parsed: Dict[str, Any]) -> List[Dict[str, str]]:
+    """
+    Detect issues with must-revalidate usage.
+
+    must-revalidate forces caches to revalidate stale responses rather than
+    serving them. Missing must-revalidate with long max-age can lead to serving
+    very stale content if origin server is unreachable.
+
+    Args:
+        parsed: Parsed cache control dictionary
+
+    Returns:
+        List of must-revalidate related findings
+
+    Issues Detected:
+        - Long max-age without must-revalidate (stale content risk)
+        - must-revalidate without max-age (unclear benefit)
+    """
+    issues = []
+
+    max_age = parsed["max_age"]
+    has_must_revalidate = parsed["must_revalidate"]
+    has_immutable = parsed["immutable"]
+    has_no_store = parsed["no_store"]
+    has_no_cache = parsed["no_cache"]
+
+    # Only check if we have actual caching directives
+    if has_no_store or has_no_cache:
+        return issues
+
+    # ISSUE 1: Long max-age without must-revalidate (risk of serving very stale content)
+    if max_age and max_age > 86400 and not has_must_revalidate and not has_immutable:  # > 1 day
+        issues.append({
+            "severity": "low",
+            "message": f"Cache-Control has max-age={max_age} ({max_age // 86400} days) without 'must-revalidate' or 'immutable'",
+            "recommendation": "Consider adding 'must-revalidate' to prevent serving stale content if origin is unreachable",
+        })
+
+    return issues
 
 
 def analyze(value: Optional[str]) -> Dict[str, Any]:
@@ -279,50 +390,84 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
     max_age = parsed["max_age"]
     has_immutable = parsed["immutable"]
 
+    # NEW: Check for directive conflicts
+    conflicts = detect_directive_conflicts(parsed)
+    has_medium_severity_conflict = any(c["severity"] == "medium" for c in conflicts)
+
+    # NEW: Check for must-revalidate issues
+    revalidate_issues = detect_must_revalidate_issues(parsed)
+
+    # Collect LOW severity warnings (conflicts and revalidate issues)
+    low_severity_warnings = []
+    low_severity_warnings.extend([c["recommendation"] for c in conflicts if c["severity"] == "low"])
+    low_severity_warnings.extend([i["recommendation"] for i in revalidate_issues if i["severity"] == "low"])
+
     # Check for good configurations
     if has_no_store:
         # Best: no caching at all
+        # Include LOW severity warnings even for GOOD status
+        recommendation = "; ".join(low_severity_warnings) if low_severity_warnings else None
         return {
             "header_name": header_name,
             "status": STATUS_GOOD,
             "severity": "info",
             "message": CONFIG["messages"][STATUS_GOOD] + " (no-store prevents all caching)",
             "actual_value": value,
-            "recommendation": None,
+            "recommendation": recommendation,
         }
 
     if max_age == 0:
         # Good: effectively no caching
+        recommendation = "; ".join(low_severity_warnings) if low_severity_warnings else None
         return {
             "header_name": header_name,
             "status": STATUS_GOOD,
             "severity": "info",
             "message": CONFIG["messages"][STATUS_GOOD] + " (max-age=0 prevents caching)",
             "actual_value": value,
-            "recommendation": None,
+            "recommendation": recommendation,
         }
 
     if has_private and has_no_cache:
         # Good: browser cache only, requires revalidation
+        recommendation = "; ".join(low_severity_warnings) if low_severity_warnings else None
         return {
             "header_name": header_name,
             "status": STATUS_GOOD,
             "severity": "info",
             "message": CONFIG["messages"][STATUS_GOOD] + " (private + no-cache)",
             "actual_value": value,
-            "recommendation": None,
+            "recommendation": recommendation,
         }
 
-    # Check for problematic configurations
+    # Check for problematic configurations (including MEDIUM severity conflicts)
+    if has_medium_severity_conflict:
+        # MEDIUM severity conflict (e.g., public + private)
+        medium_conflicts = [c for c in conflicts if c["severity"] == "medium"]
+        messages = [c["message"] for c in medium_conflicts]
+        recommendations = [c["recommendation"] for c in medium_conflicts]
+        recommendations.extend(low_severity_warnings)  # Include LOW severity warnings too
+
+        return {
+            "header_name": header_name,
+            "status": STATUS_BAD,
+            "severity": "medium",
+            "message": f"{CONFIG['messages'][STATUS_BAD]} - {'; '.join(messages)}",
+            "actual_value": value,
+            "recommendation": "; ".join(recommendations),
+        }
+
     if has_public:
         # Warning: public caching may be inappropriate for sensitive data
+        recommendations = [CONFIG["recommendations"]["public_warning"]]
+        recommendations.extend(low_severity_warnings)  # Include LOW severity warnings
         return {
             "header_name": header_name,
             "status": STATUS_BAD,
             "severity": "medium",
             "message": f"{CONFIG['messages'][STATUS_BAD]} - 'public' allows caching by all caches",
             "actual_value": value,
-            "recommendation": CONFIG["recommendations"]["public_warning"],
+            "recommendation": "; ".join(recommendations),
         }
 
     # Check for acceptable configurations
@@ -338,6 +483,9 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
         ):
             recommendations.append(CONFIG["recommendations"]["long_max_age"])
 
+        # Add LOW severity warnings
+        recommendations.extend(low_severity_warnings)
+
         return {
             "header_name": header_name,
             "status": STATUS_ACCEPTABLE,
@@ -349,13 +497,14 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
 
     if has_no_cache:
         # Acceptable: requires revalidation
+        recommendation = "; ".join(low_severity_warnings) if low_severity_warnings else None
         return {
             "header_name": header_name,
             "status": STATUS_ACCEPTABLE,
-            "severity": "info",
+            "severity": "low" if low_severity_warnings else "info",
             "message": CONFIG["messages"][STATUS_ACCEPTABLE] + " (no-cache requires revalidation)",
             "actual_value": value,
-            "recommendation": None,
+            "recommendation": recommendation,
         }
 
     # Default: has cache control but not obviously secure or insecure
@@ -363,6 +512,9 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
 
     if max_age and max_age > CONFIG["validation"]["max_age_long_threshold"] and not has_immutable:
         recommendations.append(CONFIG["recommendations"]["long_max_age"])
+
+    # Add LOW severity warnings
+    recommendations.extend(low_severity_warnings)
 
     # If caching is allowed, suggest being more restrictive
     if max_age and max_age > 0:
