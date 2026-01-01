@@ -570,6 +570,79 @@ These directives enable graceful degradation by allowing slightly stale content 
 
 ---
 
+### 15. Cross-Origin Isolation (Cross-Header Validator)
+
+**Module:** `sha/analyzers/cross_origin_validator.py`
+
+**Purpose:**
+Validates the interaction between Cross-Origin-Embedder-Policy (COEP) and Cross-Origin-Opener-Policy (COOP) headers to determine if the site enables cross-origin isolation, which is required for using SharedArrayBuffer and high-resolution timers.
+
+**How It Works:**
+- This is a **cross-header validator** that analyzes COEP and COOP together
+- Only generates a finding when at least one of COEP or COOP is present
+- Detects full isolation (COEP: require-corp + COOP: same-origin)
+- Detects credentialless isolation (COEP: credentialless + COOP: same-origin)
+- Detects partial isolation (only one header set, or incompatible values)
+- Detects incompatible combinations
+
+**Severity Levels:**
+- Full/credentialless isolation: INFO (GOOD status)
+- Partial isolation: MEDIUM (BAD status)
+- Incompatible combinations: MEDIUM (BAD status)
+
+**Full Isolation (GOOD):**
+```
+Cross-Origin-Embedder-Policy: require-corp
+Cross-Origin-Opener-Policy: same-origin
+```
+Enables SharedArrayBuffer with strict CORP requirement on all subresources.
+
+**Credentialless Isolation (GOOD with recommendation):**
+```
+Cross-Origin-Embedder-Policy: credentialless
+Cross-Origin-Opener-Policy: same-origin
+```
+Enables SharedArrayBuffer by loading cross-origin resources without credentials.
+
+**Partial Isolation Examples (BAD):**
+```
+# COEP set but COOP missing
+Cross-Origin-Embedder-Policy: require-corp
+(no COOP header)
+# Result: SharedArrayBuffer NOT available
+
+# COOP set but wrong value
+Cross-Origin-Embedder-Policy: require-corp
+Cross-Origin-Opener-Policy: same-origin-allow-popups
+# Result: SharedArrayBuffer NOT available
+
+# COOP set but COEP missing
+Cross-Origin-Opener-Policy: same-origin
+(no COEP header)
+# Result: SharedArrayBuffer NOT available
+```
+
+**Incompatible Combinations (BAD):**
+```
+Cross-Origin-Embedder-Policy: require-corp
+Cross-Origin-Opener-Policy: unsafe-none
+# Wrong COOP value
+```
+
+**Key Points:**
+- This validator complements the individual COEP, COOP, and CORP analyzers
+- Individual analyzers check header syntax and values
+- This validator checks **cross-header interactions**
+- Only appears when COEP or COOP headers are present
+- Provides actionable recommendations for achieving isolation
+
+**References:**
+- [MDN: Cross-Origin Isolation](https://developer.mozilla.org/en-US/docs/Web/API/crossOriginIsolated)
+- [web.dev: COOP and COEP](https://web.dev/coop-coep/)
+- See individual header docs: [COEP](headers/cross-origin-embedder-policy.md), [COOP](headers/cross-origin-opener-policy.md)
+
+---
+
 ## Severity Level Guide
 
 - **CRITICAL**: Immediate security risk (currently unused)

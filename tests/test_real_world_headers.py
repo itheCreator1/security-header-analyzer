@@ -20,7 +20,7 @@ def test_github_headers_analysis(github_headers):
     """
     findings = analyze_headers(github_headers)
 
-    # Should analyze all 15 headers (12 original + Set-Cookie + Cache-Control + Expect-CT)
+    # Should analyze all 15 headers (cross-origin isolation only added if COEP/COOP present)
     assert len(findings) == 15, "Should analyze all headers"
 
     # GitHub should have excellent security
@@ -70,7 +70,7 @@ def test_mozilla_headers_analysis(mozilla_headers):
     """
     findings = analyze_headers(mozilla_headers)
 
-    assert len(findings) == 15, "Should analyze all headers"
+    assert len(findings) == 16, "Should analyze all findings"
 
     critical_findings = [f for f in findings if f["severity"] == "critical"]
 
@@ -106,7 +106,8 @@ def test_all_real_world_sites(all_real_world_fixtures):
         findings = analyze_headers(fixture["headers"])
 
         # Verify analysis completes without errors
-        assert len(findings) == 15, f"{site_name}: Should analyze all 15 headers"
+        # 15 headers always analyzed + 1 optional cross-origin isolation (if COEP/COOP present)
+        assert len(findings) in [15, 16], f"{site_name}: Should analyze 15-16 findings"
 
         # Verify all findings have required fields
         for finding in findings:

@@ -60,6 +60,7 @@ See Also:
 from typing import Any, Dict, List, Union
 
 from .analyzers import ANALYZER_REGISTRY, get_all_header_keys
+from .analyzers.cross_origin_validator import validate_cross_origin_isolation
 from .config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 
 # Type alias for finding result
@@ -163,6 +164,14 @@ def analyze_headers(headers: Dict[str, Union[str, List[str]]]) -> List[Finding]:
                 "actual_value": None,
                 "recommendation": "Please report this issue to the developers",
             })
+
+    # NEW: Cross-header validation for cross-origin isolation
+    # Check COEP + COOP interaction for SharedArrayBuffer eligibility
+    cross_origin_finding = validate_cross_origin_isolation(headers)
+    if cross_origin_finding:
+        # Validate the cross-origin finding structure
+        validate_finding(cross_origin_finding, "cross-origin-isolation")
+        findings.append(cross_origin_finding)
 
     return findings
 

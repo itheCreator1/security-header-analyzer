@@ -44,7 +44,8 @@ class TestAnalyzeHeaders:
         }
         findings = analyze_headers(headers)
 
-        assert len(findings) == 15
+        # 15 individual header analyzers + 1 cross-origin isolation finding
+        assert len(findings) == 16
         assert all(f["status"] == STATUS_GOOD for f in findings)
 
     def test_analyze_headers_mixed(self):
