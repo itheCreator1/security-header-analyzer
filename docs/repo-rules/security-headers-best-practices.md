@@ -249,15 +249,286 @@ Allows only the master policy file (`/crossdomain.xml`) to be loaded. Acceptable
 
 ---
 
+## 9. Set-Cookie
+
+**Purpose:** Controls security attributes for HTTP cookies, protecting against session hijacking, CSRF, and XSS attacks.
+
+**Best Practice:**
+```
+Set-Cookie: sessionid=abc123; Secure; HttpOnly; SameSite=Strict; Path=/; Max-Age=3600
+```
+- `Secure`: Cookie only sent over HTTPS connections
+- `HttpOnly`: Prevents JavaScript access, mitigating XSS cookie theft
+- `SameSite=Strict`: Prevents CSRF attacks by blocking cross-site cookie transmission
+- `Path=/`: Restricts cookie scope to specific paths
+- `Max-Age`: Explicit expiration time
+
+**Cookie Prefixes (Enhanced Security):**
+```
+Set-Cookie: __Secure-token=xyz; Secure; HttpOnly; SameSite=Strict
+Set-Cookie: __Host-session=abc; Secure; HttpOnly; SameSite=Strict; Path=/
+```
+- `__Secure-` prefix: Requires `Secure` attribute
+- `__Host-` prefix: Requires `Secure`, no `Domain` attribute, `Path=/`
+
+**Acceptable:**
+```
+Set-Cookie: sessionid=abc123; Secure; HttpOnly; SameSite=Lax
+```
+- `SameSite=Lax`: Allows cookies on top-level navigation (acceptable for usability)
+- Missing `Path` attribute (defaults to current path)
+
+**Bad/Missing:**
+- No `Secure` attribute on HTTPS sites (allows cookie transmission over HTTP)
+- No `HttpOnly` on session/auth cookies (vulnerable to XSS cookie theft)
+- `SameSite=None` without strong justification (enables CSRF)
+- Missing `SameSite` entirely (browser-dependent behavior)
+- Overly broad `Domain` attribute (cookies sent to all subdomains)
+
+**Severity if Missing:** Medium-High
+
+**Reasoning:** Cookies are the primary authentication mechanism for most web applications. Missing security attributes directly enable session hijacking, CSRF, and XSS attacks. Cookie prefixes (`__Secure-`, `__Host-`) provide additional guarantees that even compromised code cannot weaken cookie security.
+
+---
+
+## 10. Cache-Control
+
+**Purpose:** Controls caching behavior to prevent sensitive data from being stored in browser caches, proxies, or CDNs.
+
+**Best Practice (Sensitive/Private Data):**
+```
+Cache-Control: no-store, private, must-revalidate
+```
+- `no-store`: Prevents caching entirely (sensitive data never stored)
+- `private`: Only browser cache allowed, no shared caches
+- `must-revalidate`: Forces revalidation if cache is used
+
+**Best Practice (Public Static Assets):**
+```
+Cache-Control: public, max-age=31536000, immutable
+```
+- `public`: Allows shared caching (CDNs, proxies)
+- `max-age=31536000`: Cache for 1 year
+- `immutable`: Content will never change (optimal for versioned assets)
+
+**Acceptable:**
+```
+Cache-Control: private, max-age=3600
+```
+- Private caching with reasonable expiration for semi-sensitive data
+- Appropriate for user-specific content that's not highly sensitive
+
+**Bad/Missing:**
+- No `Cache-Control` on sensitive pages (defaults vary, may cache)
+- `public` on authenticated/sensitive endpoints (data leaked via shared caches)
+- Conflicting directives: `public, private` or `no-store, max-age=3600`
+- Long `max-age` without `must-revalidate` (stale sensitive data served)
+
+**Severity if Missing:** Medium
+
+**Reasoning:** Without proper cache controls, sensitive data (bank statements, medical records, personal information) can be stored in browser caches, shared proxies, or CDNs. This data persists after logout and can be accessed by other users on shared computers or via compromised intermediate caches. Cache poisoning attacks can also serve malicious content when caching is misconfigured.
+
+---
+
+## 11. Expect-CT
+
+**Purpose:** Enforces Certificate Transparency (CT) requirements, detecting misissued SSL/TLS certificates.
+
+**Best Practice:**
+```
+Expect-CT: max-age=86400, enforce, report-uri="https://example.com/ct-report"
+```
+- `max-age=86400`: Enforce CT for 24 hours
+- `enforce`: Block connections if CT requirements not met
+- `report-uri`: Send violation reports
+
+**Acceptable:**
+```
+Expect-CT: max-age=86400, enforce
+```
+- Enforcement without reporting (acceptable if monitoring is not required)
+
+**Note:** Expect-CT is **deprecated** as of Chrome 107+ (October 2022). Modern browsers enforce CT by default without requiring this header. However, it remains useful for legacy browser support and defense-in-depth.
+
+**Bad/Missing:**
+- Header not present (acceptable for modern deployments, CT enforced by browsers)
+- `max-age` too short (<1 hour) for effective protection
+
+**Severity if Missing:** Low (deprecated header, browsers enforce CT independently)
+
+**Reasoning:** While Expect-CT helped protect against misissued certificates during the early adoption of Certificate Transparency, modern browsers now enforce CT requirements by default. Setting this header provides backward compatibility for older browsers but is no longer essential for security.
+
+**References:**
+- [MDN: Expect-CT](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Expect-CT)
+- [Chrome CT Enforcement](https://groups.google.com/a/chromium.org/g/ct-policy/c/78N3WusE_Ow)
+
+---
+
+## 12. Permissions-Policy
+
+**Purpose:** Controls which browser features and APIs can be used by the page and embedded iframes, reducing attack surface and protecting user privacy.
+
+**Best Practice:**
+```
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+```
+- Explicitly deny high-risk features unless needed
+- Use `()` (empty allowlist) to block feature entirely
+- Use `self` to allow only same-origin usage
+
+**Acceptable:**
+```
+Permissions-Policy: camera=(self), microphone=(self), geolocation=(self)
+```
+- Allow features for same-origin content (acceptable if application uses these features)
+
+**Bad/Missing:**
+- No header (all features allowed by default)
+- Wildcard usage: `camera=*` (allows all origins to access camera)
+- Enabling high-risk features without justification
+
+**High-Risk Features to Control:**
+- `camera`, `microphone`: Privacy invasion
+- `geolocation`: User tracking
+- `payment`: Financial data access
+- `usb`, `serial`, `bluetooth`: Device access
+
+**Severity if Missing:** Low
+
+**Reasoning:** Without Permissions-Policy, embedded third-party content (ads, widgets, iframes) can request access to sensitive browser features like camera, microphone, and geolocation. This header prevents malicious or compromised third-party scripts from accessing these features, protecting user privacy and reducing attack surface.
+
+**References:**
+- [MDN: Permissions-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy)
+- [W3C Permissions Policy](https://www.w3.org/TR/permissions-policy-1/)
+
+---
+
+## 13. Cross-Origin-Embedder-Policy (COEP)
+
+**Purpose:** Prevents a document from loading cross-origin resources that don't explicitly grant permission. Required for enabling powerful features like `SharedArrayBuffer`.
+
+**Best Practice:**
+```
+Cross-Origin-Embedder-Policy: require-corp
+```
+- Requires all cross-origin resources to opt-in via CORP header
+- Enables cross-origin isolation when combined with COOP
+- Necessary for `SharedArrayBuffer` and high-resolution timers
+
+**Acceptable:**
+```
+Cross-Origin-Embedder-Policy: credentialless
+```
+- Loads cross-origin resources without credentials (cookies, auth headers)
+- Provides weaker isolation but easier to deploy
+
+**Bad/Missing:**
+- No header when using `SharedArrayBuffer` or similar APIs (required for these features)
+- Using `require-corp` without ensuring all cross-origin resources have appropriate CORP headers (breaks functionality)
+
+**Severity if Missing:** Low (only needed for specific APIs)
+
+**Reasoning:** COEP is primarily needed when using powerful features like `SharedArrayBuffer`, which require cross-origin isolation to mitigate Spectre-like attacks. For standard web applications not using these features, COEP is optional. However, when needed, it provides strong isolation guarantees.
+
+**Cross-Origin Isolation:** Combining `COEP: require-corp` with `COOP: same-origin` enables full cross-origin isolation, which unlocks:
+- `SharedArrayBuffer`
+- `performance.measureUserAgentSpecificMemory()`
+- High-resolution timers without jitter
+
+**References:**
+- [MDN: COEP](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Embedder-Policy)
+- [Cross-Origin Isolation Guide](https://web.dev/cross-origin-isolation-guide/)
+
+---
+
+## 14. Cross-Origin-Opener-Policy (COOP)
+
+**Purpose:** Prevents other origins from gaining references to your window object, protecting against cross-origin attacks and enabling process isolation.
+
+**Best Practice:**
+```
+Cross-Origin-Opener-Policy: same-origin
+```
+- Prevents cross-origin windows from accessing your window
+- Required for full cross-origin isolation (with COEP)
+- Enables `SharedArrayBuffer` when combined with COEP
+
+**Acceptable:**
+```
+Cross-Origin-Opener-Policy: same-origin-allow-popups
+```
+- Allows same-origin popups while maintaining isolation from cross-origin windows
+- Useful when application legitimately opens popups
+
+**Bad/Missing:**
+- No header (allows cross-origin window references, potential security risks)
+- Using `unsafe-none` (explicitly disables protection)
+
+**Severity if Missing:** Low
+
+**Reasoning:** COOP protects against attacks where malicious sites open your application in a popup and attempt to access its content or manipulate it. Without COOP, attackers can potentially detect user state, measure timing, or exploit side-channel vulnerabilities. When combined with COEP, COOP enables cross-origin isolation necessary for `SharedArrayBuffer`.
+
+**References:**
+- [MDN: COOP](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Opener-Policy)
+- [COOP and COEP Explained](https://web.dev/coop-coep/)
+
+---
+
+## 15. Cross-Origin-Resource-Policy (CORP)
+
+**Purpose:** Protects resources from being loaded by cross-origin pages, preventing side-channel attacks and unauthorized embedding.
+
+**Best Practice:**
+```
+Cross-Origin-Resource-Policy: same-origin
+```
+- Only same-origin pages can load this resource
+- Prevents cross-site embedding and side-channel leaks
+
+**Acceptable:**
+```
+Cross-Origin-Resource-Policy: same-site
+```
+- Allows same-site (but different origin) access
+- Useful for resources shared across subdomains
+
+**When to Use `cross-origin`:**
+```
+Cross-Origin-Resource-Policy: cross-origin
+```
+- For public resources intentionally meant to be embedded (fonts, images, scripts served via CDN)
+- Required when COEP is enabled on embedding page
+
+**Bad/Missing:**
+- Missing on sensitive resources (allows cross-origin inclusion)
+- Using `cross-origin` on private/sensitive data
+
+**Severity if Missing:** Low
+
+**Reasoning:** CORP prevents Spectre-like attacks that exploit cross-origin resource loading to leak data via side channels. It also prevents unauthorized embedding of your resources in other sites. While not critical for all applications, it provides defense-in-depth against timing attacks and resource theft.
+
+**References:**
+- [MDN: CORP](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Resource-Policy)
+- [Resource Isolation Policy](https://resourcepolicy.fyi/)
+
+---
+
 ## Summary Table
 
 | Header | Severity if Missing | Ease of Implementation | Security Impact |
 |--------|-------------------|----------------------|-----------------|
 | HSTS | Critical | Very Easy | Very High |
-| X-Frame-Options | High | Very Easy | High |
-| X-Content-Type-Options | Medium-High | Very Easy | High |
 | CSP | Critical | Hard | Very High |
+| X-Frame-Options | High | Very Easy | High |
 | Referrer-Policy | High | Very Easy | High |
-| X-XSS-Protection | Low | Very Easy | Low |
-| X-Download-Options | Low | Very Easy | Low |
+| X-Content-Type-Options | Medium-High | Very Easy | High |
+| Set-Cookie | Medium-High | Medium | High |
+| Cache-Control | Medium | Medium | Medium-High |
 | X-Permitted-Cross-Domain-Policies | Medium | Very Easy | Medium |
+| Expect-CT | Low (deprecated) | Easy | Low |
+| X-XSS-Protection | Low (deprecated) | Very Easy | Low |
+| X-Download-Options | Low (legacy) | Very Easy | Low |
+| Permissions-Policy | Low | Medium | Medium |
+| COEP | Low (context-dependent) | Hard | High (when needed) |
+| COOP | Low (context-dependent) | Easy | Medium |
+| CORP | Low | Easy | Medium |

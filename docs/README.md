@@ -26,7 +26,7 @@ Welcome to the Security Header Analyzer documentation. This index organizes all 
 **Understanding Results:**
 - [Security Headers Overview](headers/README.md) - All 15 headers explained
 - [Attack Scenarios](real-world-attack-scenarios.md) - Real-world exploits prevented
-- [Best Practices](security-headers-best-practices.md) - Configuration recommendations
+- [Best Practices](repo-rules/security-headers-best-practices.md) - Configuration recommendations
 
 **Troubleshooting:**
 - [Common Issues](usage-guide.md#troubleshooting) - Error messages and solutions
@@ -49,7 +49,7 @@ Welcome to the Security Header Analyzer documentation. This index organizes all 
 **Contributing:**
 - [Extensibility Guide](architecture/extensibility-guide.md) - Adding new analyzers
 - [Contributing Guidelines](../CONTRIBUTING.md) - Development workflow
-- [Testing Standards](testing-guide.md) - Test patterns and coverage
+- [Repository Rules](repo-rules/README.md) - Code standards, testing, git practices
 
 ---
 
@@ -58,7 +58,7 @@ Welcome to the Security Header Analyzer documentation. This index organizes all 
 **Security Analysis:**
 - [Attack Scenarios](real-world-attack-scenarios.md) - Cross-header attack examples
 - [SSRF Protection](architecture/security-implementation.md) - Security architecture details
-- [Best Practices](security-headers-best-practices.md) - Header configuration guide
+- [Best Practices](repo-rules/security-headers-best-practices.md) - Header configuration guide
 
 **Header Deep Dives:**
 - [All Security Headers](headers/README.md) - Index of all 15 headers
@@ -128,6 +128,14 @@ Welcome to the Security Header Analyzer documentation. This index organizes all 
 - [Testing Guide](testing-guide.md) - Running tests and writing new ones
 - [API Documentation](api-reference.md) - Library interface
 
+**Repository Rules:** (Essential for all development)
+- [Repository Rules Index](repo-rules/README.md) - Overview and quick links
+- [Python Code Standards](repo-rules/python-code-standards.md) - Type hints, patterns, conventions
+- [Testing Standards](repo-rules/testing-standards.md) - Coverage, fixtures, patterns
+- [Git Practices](repo-rules/git-practices.md) - Commits, branches, releases
+- [Debugging Practices](repo-rules/debugging-practices.md) - Tools and workflows
+- [Documentation Standards](repo-rules/documentation-standards.md) - Templates and quality
+
 **References:**
 - [Analyzer Specifications](analyzer-reference.md) - Individual analyzer details
 - [Deployment Guide](deployment-guide.md) - CI/CD integration
@@ -164,8 +172,17 @@ docs/
 │
 ├── Advanced Topics
 │   ├── real-world-attack-scenarios.md Real-world attacks
-│   ├── security-headers-best-practices.md Configuration guide
 │   └── deployment-guide.md            CI/CD integration
+│
+├── Repository Rules
+│   └── repo-rules/
+│       ├── README.md                  Rules index
+│       ├── python-code-standards.md   Code conventions
+│       ├── testing-standards.md       Test requirements
+│       ├── git-practices.md           Git workflow
+│       ├── debugging-practices.md     Debug strategies
+│       ├── documentation-standards.md Doc templates
+│       └── security-headers-best-practices.md Header configs
 │
 └── Reference
     ├── api-reference.md               Library API
