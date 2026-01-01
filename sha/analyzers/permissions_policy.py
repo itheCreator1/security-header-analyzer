@@ -11,10 +11,12 @@ Purpose:
 
 Overview:
     The Permissions-Policy analyzer parses comma-separated feature directives, validates
-    restrictions on 7 sensitive features, and evaluates policy strictness. It checks for
-    restrictive values (empty allowlist '()' or 'self' only) versus permissive wildcards.
-    The analyzer recognizes that Permissions-Policy is crucial for privacy (camera,
-    microphone, geolocation) and security (USB, serial, bluetooth access).
+    restrictions on 19 sensitive features (7 high-risk, 7 medium-risk, 5 low-risk), and
+    evaluates policy strictness. It checks for restrictive values (empty allowlist '()'
+    or 'self' only) versus permissive wildcards. The analyzer uses risk categorization to
+    provide targeted recommendations and detects deprecated Feature-Policy names. It
+    recognizes that Permissions-Policy is crucial for privacy (camera, microphone,
+    geolocation) and security (USB, serial, bluetooth access).
 
 Key Functions:
     - analyze(value) -> Finding
@@ -43,14 +45,29 @@ Attack Scenarios Prevented:
     - **Payment Handler Hijacking**: Restricts which origins can register as payment
       handlers, preventing payment interception
 
-Sensitive Features Tracked:
+Sensitive Features Tracked (by Risk Level):
+    **HIGH-RISK (7 features):**
     - **camera**: Webcam access (privacy concern)
     - **microphone**: Audio recording (privacy/surveillance)
     - **geolocation**: User location tracking (privacy)
-    - **payment**: Payment Request API (financial security)
     - **usb**: USB device access (security concern)
     - **serial**: Serial port access (hardware security)
     - **bluetooth**: Bluetooth device pairing (hardware security)
+    - **display-capture**: Screen sharing/recording (privacy)
+
+    **MEDIUM-RISK (7 features):**
+    - **payment**: Payment Request API (financial security)
+    - **fullscreen**: UI spoofing vector
+    - **gyroscope**, **accelerometer**, **magnetometer**: Sensor tracking
+    - **midi**: MIDI device access
+    - **picture-in-picture**: Privacy concern
+
+    **LOW-RISK (5 features):**
+    - **web-share**: Data sharing control
+    - **autoplay**: UX/security
+    - **ambient-light-sensor**: Tracking vector
+    - **encrypted-media**: DRM content
+    - **document-domain**: Cross-origin security
 
 Policy Syntax:
     - feature=(): Deny to all origins (most restrictive)
@@ -59,8 +76,11 @@ Policy Syntax:
     - feature=*: Allow all origins (DANGEROUS - flagged as bad)
 
 Configuration:
-    - sensitive_features: 7 critical features to check (camera, mic, geo, payment, usb, serial, bluetooth)
+    - high_risk_features: 7 critical features (camera, microphone, geolocation, usb, serial, bluetooth, display-capture)
+    - medium_risk_features: 7 important features (payment, fullscreen, sensors, midi, picture-in-picture)
+    - low_risk_features: 5 nice-to-have restrictions (web-share, autoplay, ambient-light-sensor, etc.)
     - restrictive_values: '()' or 'self' (good restriction patterns)
+    - deprecated_features: Map of old Feature-Policy names to modern equivalents
 
 Related Modules:
     - sha.analyzers.__init__ - Registers analyzer in ANALYZER_REGISTRY
@@ -103,18 +123,42 @@ CONFIG = {
     "severity_missing": "high",
     "description": "Controls which browser features and APIs can be used",
     "validation": {
-        # Sensitive features that should be restricted
-        "sensitive_features": [
-            "camera",
-            "microphone",
-            "geolocation",
-            "payment",
-            "usb",
-            "serial",
-            "bluetooth",
+        # HIGH-RISK features - should always be restricted (privacy/security critical)
+        "high_risk_features": [
+            "camera",  # Webcam access
+            "microphone",  # Audio recording
+            "geolocation",  # Location tracking
+            "usb",  # USB device access
+            "serial",  # Serial port access
+            "bluetooth",  # Bluetooth pairing
+            "display-capture",  # Screen sharing/recording
+        ],
+        # MEDIUM-RISK features - should be restricted in most cases
+        "medium_risk_features": [
+            "payment",  # Payment Request API
+            "fullscreen",  # UI spoofing vector
+            "gyroscope",  # Sensor tracking
+            "accelerometer",  # Sensor tracking
+            "magnetometer",  # Sensor tracking
+            "midi",  # MIDI device access
+            "picture-in-picture",  # Privacy concern
+        ],
+        # LOW-RISK features - nice to restrict but less critical
+        "low_risk_features": [
+            "web-share",  # Data sharing
+            "autoplay",  # UX/security
+            "ambient-light-sensor",  # Tracking vector
+            "encrypted-media",  # DRM content
+            "document-domain",  # Cross-origin security
         ],
         # Good restriction patterns
         "restrictive_values": ["()", "self"],
+        # Deprecated Feature-Policy names (warn users)
+        "deprecated_features": {
+            "vr": "xr-spatial-tracking",  # Old name for XR
+            "speaker": "speaker-selection",
+            "vibrate": "vibrate",  # Removed from spec
+        },
     },
     "messages": {
         STATUS_GOOD: "Permissions-Policy is properly configured with restrictive settings",
@@ -165,15 +209,49 @@ def parse_permissions_policy(value: str) -> Dict[str, str]:
     return features
 
 
+def detect_deprecated_features(features: Dict[str, str]) -> Dict[str, str]:
+    """
+    Detect deprecated Feature-Policy names in parsed policy.
+
+    Args:
+        features: Parsed feature directives
+
+    Returns:
+        Dictionary mapping deprecated feature names to modern replacements
+    """
+    deprecated = {}
+    deprecated_map = CONFIG["validation"]["deprecated_features"]
+
+    for feature_name in features.keys():
+        if feature_name in deprecated_map:
+            deprecated[feature_name] = deprecated_map[feature_name]
+
+    return deprecated
+
+
+def get_all_sensitive_features() -> list:
+    """
+    Get combined list of all sensitive features (high + medium risk).
+
+    Returns:
+        List of all sensitive feature names
+    """
+    high_risk = CONFIG["validation"]["high_risk_features"]
+    medium_risk = CONFIG["validation"]["medium_risk_features"]
+    return high_risk + medium_risk
+
+
 def analyze(value: Optional[str]) -> Dict[str, Any]:
     """
     Analyze Permissions-Policy header.
 
     Validation rules:
     - Missing: High severity (modern feature, important for privacy)
-    - Restricts sensitive features with () or self: Good
+    - Restricts high-risk features with () or self: Good
     - Has some restrictions: Acceptable
-    - Allows sensitive features with *: Bad
+    - Allows high-risk features with *: Bad
+    - Detects deprecated features and provides warnings
+    - Warns about unrestricted high-risk features
 
     Args:
         value: Header value or None if missing
@@ -186,6 +264,7 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
         - message: str
         - actual_value: str or None
         - recommendation: str or None
+        - warnings: list (optional - for deprecated features)
     """
     header_name = CONFIG["display_name"]
 
@@ -214,61 +293,127 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
             "recommendation": CONFIG["recommendations"]["missing"],
         }
 
-    # Check if sensitive features are restricted
-    sensitive_features = CONFIG["validation"]["sensitive_features"]
+    # Check for deprecated features
+    deprecated = detect_deprecated_features(features)
+    warnings = []
+    if deprecated:
+        for old_name, new_name in deprecated.items():
+            warnings.append(
+                f"Deprecated feature '{old_name}' - use '{new_name}' instead"
+            )
+
+    # Get all sensitive features (high + medium risk)
+    high_risk_features = CONFIG["validation"]["high_risk_features"]
+    medium_risk_features = CONFIG["validation"]["medium_risk_features"]
+    all_sensitive = get_all_sensitive_features()
     restrictive_values = CONFIG["validation"]["restrictive_values"]
 
-    restricted_count = 0
-    unrestricted_sensitive = []
+    # Track restricted features by risk level
+    high_risk_restricted = 0
+    medium_risk_restricted = 0
+    unrestricted_high_risk = []
+    unrestricted_medium_risk = []
+    missing_high_risk = []
 
-    for feature in sensitive_features:
+    # Check high-risk features
+    for feature in high_risk_features:
         if feature in features:
             allowlist = features[feature]
             # Check if it's restrictive (empty list or self only)
             if any(restrictive in allowlist for restrictive in restrictive_values):
-                restricted_count += 1
+                high_risk_restricted += 1
             elif "*" in allowlist:
-                unrestricted_sensitive.append(feature)
-        # Feature not mentioned means it inherits default (usually allowed)
+                unrestricted_high_risk.append(feature)
+        else:
+            # High-risk feature not mentioned - warn about it
+            missing_high_risk.append(feature)
+
+    # Check medium-risk features
+    for feature in medium_risk_features:
+        if feature in features:
+            allowlist = features[feature]
+            if any(restrictive in allowlist for restrictive in restrictive_values):
+                medium_risk_restricted += 1
+            elif "*" in allowlist:
+                unrestricted_medium_risk.append(feature)
+
+    total_restricted = high_risk_restricted + medium_risk_restricted
+
+    # Build recommendation based on analysis
+    recommendation = None
+    if missing_high_risk and high_risk_restricted < len(high_risk_features):
+        # Suggest adding missing high-risk restrictions
+        missing_list = ", ".join(missing_high_risk[:3])  # Show first 3
+        if len(missing_high_risk) > 3:
+            missing_list += f", and {len(missing_high_risk) - 3} more"
+        recommendation = (
+            f"Consider restricting high-risk features: {missing_list}. "
+            f"Example: {missing_high_risk[0]}=()"
+        )
 
     # Evaluate the policy
-    if restricted_count >= 3 and not unrestricted_sensitive:
-        # Good: At least 3 sensitive features restricted, none unrestricted
-        return {
-            "header_name": header_name,
-            "status": STATUS_GOOD,
-            "severity": "info",
-            "message": CONFIG["messages"][STATUS_GOOD],
-            "actual_value": value,
-            "recommendation": None,
-        }
-    elif unrestricted_sensitive:
-        # Bad: Some sensitive features explicitly allowed with wildcard
-        return {
+    if unrestricted_high_risk:
+        # BAD: High-risk features explicitly allowed with wildcard
+        message = (
+            f"{CONFIG['messages'][STATUS_BAD]}: "
+            f"High-risk features allowed with wildcard: {', '.join(unrestricted_high_risk)}"
+        )
+        result = {
             "header_name": header_name,
             "status": STATUS_BAD,
             "severity": "high",
-            "message": f"{CONFIG['messages'][STATUS_BAD]}: {', '.join(unrestricted_sensitive)} allowed with wildcard",
+            "message": message,
             "actual_value": value,
             "recommendation": CONFIG["recommendations"]["too_permissive"],
         }
-    elif restricted_count > 0:
-        # Acceptable: Some restrictions in place
-        return {
+    elif unrestricted_medium_risk:
+        # BAD: Medium-risk features unrestricted
+        message = (
+            f"{CONFIG['messages'][STATUS_BAD]}: "
+            f"Medium-risk features allowed with wildcard: {', '.join(unrestricted_medium_risk)}"
+        )
+        result = {
+            "header_name": header_name,
+            "status": STATUS_BAD,
+            "severity": "medium",
+            "message": message,
+            "actual_value": value,
+            "recommendation": "Restrict medium-risk features to specific origins or deny with ()",
+        }
+    elif high_risk_restricted >= 3:
+        # GOOD: At least 3 high-risk features restricted
+        message = f"{CONFIG['messages'][STATUS_GOOD]} ({high_risk_restricted} high-risk features restricted)"
+        result = {
+            "header_name": header_name,
+            "status": STATUS_GOOD,
+            "severity": "info",
+            "message": message,
+            "actual_value": value,
+            "recommendation": recommendation,
+        }
+    elif total_restricted >= 3:
+        # ACCEPTABLE: At least 3 sensitive features restricted
+        result = {
             "header_name": header_name,
             "status": STATUS_ACCEPTABLE,
             "severity": "low",
-            "message": CONFIG["messages"][STATUS_ACCEPTABLE],
+            "message": f"{CONFIG['messages'][STATUS_ACCEPTABLE]} ({total_restricted} features restricted)",
             "actual_value": value,
-            "recommendation": "Consider adding more restrictive policies for additional sensitive features",
+            "recommendation": recommendation or "Consider adding more restrictive policies for high-risk features",
         }
     else:
-        # Has directives but doesn't restrict sensitive features
-        return {
+        # ACCEPTABLE: Has directives but few restrictions
+        result = {
             "header_name": header_name,
             "status": STATUS_ACCEPTABLE,
             "severity": "medium",
-            "message": "Permissions-Policy is present but doesn't restrict sensitive features",
+            "message": "Permissions-Policy is present but doesn't adequately restrict sensitive features",
             "actual_value": value,
             "recommendation": CONFIG["recommendations"]["too_permissive"],
         }
+
+    # Add warnings if any deprecated features found
+    if warnings:
+        result["warnings"] = warnings
+
+    return result

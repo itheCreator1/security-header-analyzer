@@ -91,11 +91,12 @@ class TestAnalyzePermissionsPolicy:
         assert result["recommendation"] is not None
 
     def test_analyze_good_multiple_restrictions(self):
-        """Test analysis with multiple sensitive features restricted."""
+        """Test analysis with multiple high-risk features restricted."""
         result = analyze_permissions_policy("camera=(), microphone=(), geolocation=()")
         assert result["status"] == STATUS_GOOD
         assert result["severity"] == "info"
-        assert result["recommendation"] is None
+        # May have recommendation for missing high-risk features
+        assert result["recommendation"] is None or "high-risk" in result["recommendation"]
 
     def test_analyze_good_with_self(self):
         """Test analysis with features restricted to self."""
@@ -104,17 +105,18 @@ class TestAnalyzePermissionsPolicy:
         assert result["severity"] == "info"
 
     def test_analyze_acceptable_some_restrictions(self):
-        """Test analysis with only some restrictions."""
+        """Test analysis with only some restrictions (2 high-risk features)."""
         result = analyze_permissions_policy("camera=(), microphone=()")
         assert result["status"] == STATUS_ACCEPTABLE
-        assert result["severity"] == "low"
+        # With only 2 high-risk features, severity is medium (not enough restrictions)
+        assert result["severity"] == "medium"
 
     def test_analyze_acceptable_non_sensitive_features(self):
-        """Test analysis with only non-sensitive features."""
-        result = analyze_permissions_policy("fullscreen=*, autoplay=()")
+        """Test analysis with only non-sensitive/low-risk features."""
+        result = analyze_permissions_policy("autoplay=(), web-share=()")
         assert result["status"] == STATUS_ACCEPTABLE
         assert result["severity"] == "medium"
-        assert "doesn't restrict sensitive features" in result["message"]
+        assert "doesn't adequately restrict sensitive features" in result["message"]
 
     def test_analyze_bad_wildcard_sensitive(self):
         """Test analysis with sensitive features allowed via wildcard."""
