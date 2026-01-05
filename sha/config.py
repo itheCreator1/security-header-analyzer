@@ -67,7 +67,7 @@ See Also:
     - SECURITY.md - Security considerations and known limitations
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # Version information (imported from __init__.py at runtime)
 VERSION = "1.0.0"
@@ -95,7 +95,7 @@ PRIVATE_IP_RANGES = [
     "fe80::/10",  # IPv6 link-local
 ]
 
-LOCALHOST_NAMES = ["localhost", "0.0.0.0"]
+LOCALHOST_NAMES = ["localhost", "0.0.0.0"]  # nosec B104 - Not binding, used for SSRF validation
 
 # Severity levels in order of importance
 SEVERITY_LEVELS = ["critical", "high", "medium-high", "medium", "low", "info"]
@@ -157,7 +157,9 @@ class HTTPError(SecurityHeaderAnalyzerError):
     in error responses.
     """
 
-    def __init__(self, message: str, status_code: int = None, headers: Dict = None):
+    def __init__(
+        self, message: str, status_code: Optional[int] = None, headers: Optional[Dict] = None
+    ):
         """
         Initialize HTTPError with additional context.
 
@@ -240,7 +242,7 @@ def is_valid_severity(severity: str) -> bool:
 # Backward compatibility: SECURITY_HEADERS dict
 # This uses a custom __getattr__ at module level (Python 3.7+)
 # to lazily load from analyzer configs when accessed
-def __getattr__(name):
+def __getattr__(name: str) -> Any:
     if name == "SECURITY_HEADERS":
         from .analyzers import CONFIG_REGISTRY
 

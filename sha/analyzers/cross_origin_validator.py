@@ -58,7 +58,7 @@ References:
 
 from typing import Any, Dict, Optional
 
-from ..config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
+from ..config import STATUS_BAD, STATUS_GOOD
 
 
 def validate_cross_origin_isolation(headers: Dict[str, str]) -> Optional[Dict[str, Any]]:

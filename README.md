@@ -1,7 +1,7 @@
 # Security Header Analyzer
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-494%20passing-success.svg)](https://github.com/itheCreator1/security-header-analyzer/actions)
+[![Tests](https://img.shields.io/badge/tests-582%20passing-success.svg)](https://github.com/itheCreator1/security-header-analyzer/actions)
 [![Coverage](https://img.shields.io/badge/coverage-97%25-brightgreen.svg)](https://github.com/itheCreator1/security-header-analyzer)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -15,7 +15,7 @@ A lightweight Python CLI tool that fetches and analyzes HTTP security headers ac
 * **Robust Error Handling**: Graceful handling of malformed CSP policies, analyzer failures, and edge cases
 * **Multiple Output Formats**: Human-readable text or JSON with schema versioning for automation
 * **Severity Classification**: Issues categorized as Critical, High, Medium, or Low
-* **97% Test Coverage**: 494 comprehensive tests ensuring reliability
+* **97% Test Coverage**: 582 comprehensive tests ensuring reliability
 * **Type Safety**: Full type hints with mypy support and runtime validation
 * **CI/CD Ready**: Easy integration with GitHub Actions, GitLab CI, Jenkins
 * **Extensible**: Add new header analyzers with minimal code changes
@@ -103,7 +103,7 @@ security-header-analyzer/
 │   ├── reporter.py       # Report generation (text/JSON)
 │   ├── config.py         # Configuration and exceptions
 │   └── analyzers/        # Individual header analyzers (15 total)
-├── tests/                # Comprehensive test suite (494 tests, 97% coverage)
+├── tests/                # Comprehensive test suite (582 tests, 97% coverage)
 ├── docs/                 # Documentation
 └── .github/              # CI/CD workflows
 ```
@@ -171,8 +171,8 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for:
 
 - **Version**: 1.0.0
 - **Python**: 3.8, 3.9, 3.10, 3.11, 3.12
-- **Tests**: 291 passing
-- **Coverage**: 96%
+- **Tests**: 582 passing
+- **Coverage**: 97%
 - **License**: MIT
 
 ## 🔗 Links

@@ -79,7 +79,7 @@ import json
 from datetime import datetime
 from typing import Any, Dict, List
 
-from .config import SCHEMA_VERSION, STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
+from .config import SCHEMA_VERSION, STATUS_GOOD
 
 # Type alias for finding
 Finding = Dict[str, Any]

@@ -517,51 +517,34 @@ def _analyze_single_cookie(cookie_value: str) -> Dict[str, Any]:
         # Prefix violations or sensitive cookie issues are HIGH severity
         status = STATUS_BAD
         severity = "high"
-        message = f"Cookie {', '.join(issues)}"
-        recommendation = "; ".join(recommendations)
     elif not has_secure or not has_httponly:
         # Critical security attributes missing
         status = STATUS_BAD
         severity = "high"
-        message = f"Cookie {', '.join(issues)}"
-        recommendation = "; ".join(recommendations)
     elif samesite is None or (samesite == "None" and not has_secure) or has_medium_severity_scope_issue:
         # SameSite issues or scope issues
         status = STATUS_BAD
         severity = "medium"
-        message = f"Cookie {', '.join(issues)}"
-        recommendation = "; ".join(recommendations)
     elif samesite == "Strict":
         # Best configuration
         if max_age and max_age > CONFIG["validation"]["max_age_warning_threshold"]:
             status = STATUS_ACCEPTABLE
             severity = "low"
-            message = f"{CONFIG['messages'][STATUS_GOOD]}, but {issues[0]}"
-            recommendation = recommendations[0] if recommendations else None
         else:
             status = STATUS_GOOD
             severity = "info"
-            message = CONFIG["messages"][STATUS_GOOD]
-            # Include LOW severity recommendations even for GOOD status
-            recommendation = "; ".join(recommendations) if recommendations else None
     elif samesite == "Lax" or (samesite == "None" and has_secure):
         # Acceptable configuration
         if max_age and max_age > CONFIG["validation"]["max_age_warning_threshold"]:
             status = STATUS_ACCEPTABLE
             severity = "low"
-            message = f"{CONFIG['messages'][STATUS_ACCEPTABLE]} ({issues[0]})"
-            recommendation = recommendations[0] if recommendations else None
         else:
             status = STATUS_ACCEPTABLE
             severity = "low"
-            message = CONFIG["messages"][STATUS_ACCEPTABLE]
-            recommendation = "Consider using SameSite=Strict for maximum protection"
     else:
         # Shouldn't reach here, but handle gracefully
         status = STATUS_ACCEPTABLE
         severity = "low"
-        message = CONFIG["messages"][STATUS_ACCEPTABLE]
-        recommendation = None
 
     return {
         "cookie_name": parsed.get("cookie_name", "unknown"),

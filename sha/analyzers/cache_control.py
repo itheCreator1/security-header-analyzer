@@ -105,7 +105,7 @@ See Also:
     - https://tools.ietf.org/html/rfc7234 - HTTP Caching specification
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from ..config import STATUS_ACCEPTABLE, STATUS_BAD, STATUS_GOOD, STATUS_MISSING
 

@@ -57,6 +57,7 @@ See Also:
     - docs/API.md#analyzer-module - API reference
 """
 
+import sys
 from typing import Any, Dict, List, Union
 
 from .analyzers import ANALYZER_REGISTRY, get_all_header_keys
@@ -152,7 +153,6 @@ def analyze_headers(headers: Dict[str, Union[str, List[str]]]) -> List[Finding]:
 
         except Exception as e:
             # Log error and create error finding
-            import sys
             print(f"Warning: Analyzer for {header_key} failed: {e}", file=sys.stderr)
 
             # Create placeholder finding for failed analyzer

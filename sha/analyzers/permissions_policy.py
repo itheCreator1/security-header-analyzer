@@ -305,7 +305,6 @@ def analyze(value: Optional[str]) -> Dict[str, Any]:
     # Get all sensitive features (high + medium risk)
     high_risk_features = CONFIG["validation"]["high_risk_features"]
     medium_risk_features = CONFIG["validation"]["medium_risk_features"]
-    all_sensitive = get_all_sensitive_features()
     restrictive_values = CONFIG["validation"]["restrictive_values"]
 
     # Track restricted features by risk level
