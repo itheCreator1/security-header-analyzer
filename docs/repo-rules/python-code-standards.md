@@ -29,7 +29,7 @@
 **Configuration** (from `pyproject.toml`):
 ```toml
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 disallow_untyped_defs = true        # ← Enforces all functions typed
 disallow_incomplete_defs = true      # ← No missing annotations
 check_untyped_defs = true
