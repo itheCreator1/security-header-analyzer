@@ -170,7 +170,9 @@ def parse_expect_ct(value: str) -> Dict[str, Any]:
 
             if dir_name == "max-age":
                 try:
-                    result["max_age"] = int(dir_value)
+                    parsed_age = int(dir_value)
+                    if parsed_age >= 0:
+                        result["max_age"] = parsed_age
                 except ValueError:
                     pass
             elif dir_name == "report-uri":

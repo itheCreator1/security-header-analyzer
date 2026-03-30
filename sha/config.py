@@ -76,6 +76,7 @@ VERSION = "1.0.0"
 DEFAULT_TIMEOUT = 10  # seconds
 MAX_TIMEOUT = 300  # 5 minutes maximum - prevents extremely long hangs
 DEFAULT_MAX_REDIRECTS = 5
+MAX_REDIRECTS = 20  # prevents excessive redirect chain resource consumption
 DEFAULT_USER_AGENT = (
     f"SecurityHeaderAnalyzer/{VERSION} (https://github.com/ThodorhsPerros/security-header-analyzer)"
 )
