@@ -62,6 +62,7 @@ from .analyzer import analyze_headers
 from .config import (
     DEFAULT_MAX_REDIRECTS,
     DEFAULT_TIMEOUT,
+    MAX_REDIRECTS,
     MAX_TIMEOUT,
     HTTPError,
     InvalidURLError,
@@ -180,6 +181,9 @@ Exit codes:
 
     if args.max_redirects < 0:
         parser.error("max-redirects must be non-negative")
+
+    if args.max_redirects > MAX_REDIRECTS:
+        parser.error(f"max-redirects cannot exceed {MAX_REDIRECTS}")
 
     return args
 

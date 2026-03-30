@@ -591,15 +591,23 @@ def check_csp_bypasses(directives: Dict[str, List[str]]) -> List[Dict[str, str]]
 
     # BYPASS 10: Dangling markup injection via permissive img-src
     effective_img_src = img_src if img_src else default_src
-    if effective_img_src and "*" not in effective_img_src:
-        # Check if img-src allows external domains (potential for dangling markup)
-        external_domains = [v for v in effective_img_src if not v.startswith("'") and v != "data:"]
-        if external_domains:
+    if effective_img_src:
+        if "*" in effective_img_src:
+            # Wildcard allows all external domains - highest risk for dangling markup
             bypasses.append({
-                "severity": "low",
-                "message": "CSP img-src allows external domains - potential for dangling markup injection to exfiltrate data",
-                "recommendation": "Restrict img-src to 'self' if possible, or use nonces for dynamic images",
+                "severity": "medium",
+                "message": "CSP img-src allows all external domains (*) - high risk for dangling markup injection to exfiltrate data",
+                "recommendation": "Restrict img-src to 'self' or specific trusted domains; never use wildcard *",
             })
+        else:
+            # Check if img-src allows external domains (potential for dangling markup)
+            external_domains = [v for v in effective_img_src if not v.startswith("'") and v not in ("data:", "*")]
+            if external_domains:
+                bypasses.append({
+                    "severity": "low",
+                    "message": "CSP img-src allows external domains - potential for dangling markup injection to exfiltrate data",
+                    "recommendation": "Restrict img-src to 'self' if possible, or use nonces for dynamic images",
+                })
 
     # BYPASS 11: unsafe-hashes without proper configuration
     if "'unsafe-hashes'" in effective_script_src:
