@@ -6,7 +6,7 @@
 # Then manually keep only production dependencies
 
 requests==2.32.5
-certifi==2025.7.9
+certifi==2025.11.12
 charset-normalizer==3.4.3
 idna==3.10
 urllib3==2.5.0
